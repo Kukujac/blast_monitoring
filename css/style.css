@@ -1,0 +1,47 @@
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: sans-serif;
+}
+#map {
+  height: 100%;
+  width: 100%;
+}
+#sidebar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 350px;
+  height: 100%;
+  background: #f8f8f8;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+  overflow: auto;
+  z-index: 1000;
+}
+#sidebar button {
+  margin: 5px;
+}
+.tab-content {
+  display: none;
+  padding: 10px;
+}
+.tab-content.active {
+  display: block;
+}
+.tabs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+}
+.tabs li {
+  flex: 1;
+  padding: 10px;
+  background: #ccc;
+  cursor: pointer;
+  text-align: center;
+}
+.tabs li:hover {
+  background: #bbb;
+}
