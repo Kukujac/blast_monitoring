@@ -1112,7 +1112,7 @@
             refreshBtn.disabled = true;
             
             try {
-                let query = supabase
+                let query = supabaseClient
                     .from(currentTable)
                     .select(`
                         hole_id,
@@ -1200,7 +1200,7 @@
 
         async function loadMonitoringData() {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('blasting_monitoring')
                     .select(`
                         id,
@@ -1302,7 +1302,7 @@
 
         async function loadPitData() {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('pit_boundaries')
                     .select('name, geometry');
                 
