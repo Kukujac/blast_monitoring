@@ -1154,26 +1154,26 @@
                         return deviation > 0 && actualElevation > 0 && designElevation > 0;
                     })
                     .map(row => ({
-                        type: "Feature",
-                        properties: {
-                            hole_id: row.hole_id,
-                            actual_elevation: row.actual_elevation,
-                            actual_northing: row.actual_northing,
-                            actual_easting: row.actual_easting,
-                            design_elevation: row.design_elevation,
-                            planned_elevation: row.planned_elevation,
-                            dx: row.dx,
-                            dy: row.dy,
-                            dz: row.dz,
-                            hole_deviation: row.hole_deviation,
-                            in_spec_02: row.in_spec_02,
-                            in_spec_04: row.in_spec_04,
-                            blast_date: row.blast_date
-                        },
-                        geometry_actual: row.geom_actual ? JSON.parse(row.geom_actual) : null,
-                        geometry_design: row.geom_design ? JSON.parse(row.geom_design) : null,
-                        geometry_planned: row.geom_planned ? JSON.parse(row.geom_planned) : null
-                    }));
+                    type: "Feature",
+                    properties: {
+                        hole_id: row.hole_id,
+                        actual_elevation: row.actual_elevation,
+                        actual_northing: row.actual_northing,
+                        actual_easting: row.actual_easting,
+                        design_elevation: row.design_elevation,
+                        planned_elevation: row.planned_elevation,
+                        dx: row.dx,
+                        dy: row.dy,
+                        dz: row.dz,
+                        hole_deviation: row.hole_deviation,
+                        in_spec_02: row.in_spec_02,
+                        in_spec_04: row.in_spec_04,
+                        blast_date: row.blast_date
+                    },
+                    geometry_actual: row.geom_actual || null,  
+                    geometry_design: row.geom_design || null, 
+                    geometry_planned: row.geom_planned || null 
+                }));
                 
                 console.log(`Loaded ${holeData.length} holes from ${currentTable}`);
                 
@@ -1314,7 +1314,7 @@
                     type: "FeatureCollection",
                     features: data.map(row => ({
                         type: "Feature",
-                        geometry: JSON.parse(row.geometry),
+                        geometry: row.geom || null,  // Already an object, don't parse!
                         properties: { name: row.name }
                     }))
                 };
