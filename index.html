@@ -1201,100 +1201,88 @@
         async function loadMonitoringData() {
             try {
                 const { data, error } = await supabaseClient
-                .from('blasting_monitoring')
-                .select(`
-                    id,
-                    monitoring_date,
-                    monitoring_time,
-                    monitoring_point,
-                    shot_number,
-                    ppv_actual,
-                    pspl_actual,
-                    distance_m,
-                    weather_conditions,
-                    rock_type,
-                    cooperate_charge_kg,
-                    burden,
-                    spacing,
-                    drill_depth,
-                    holes_design,
-                    holes_actual,
-                    actual_volume,
-                    planned_volume,
-                    location
-                `)
-                .order('monitoring_date', { ascending: false });
+                    .from('blasting_monitoring')
+                    .select(`
+                        id,
+                        record_id,
+                        blast_date,
+                        blast_time,
+                        pit_location,
+                        monitoring_point,
+                        shot_number,
+                        ppv_actual,
+                        pspl_actual,
+                        distance_m,
+                        weather_conditions,
+                        rock_type,
+                        cooperate_charge_kg,
+                        burden,
+                        spacing,
+                        drill_depth,
+                        holes_design,
+                        holes_actual,
+                        actual_volume,
+                        planned_volume,
+                        location
+                    `)
+                    .order('blast_date', { ascending: false })
+                    .order('blast_time', { ascending: false });
                 
                 if (error) throw error;
                 
-                // Determine blast pattern based on current table
-                let blastPattern = '';
-                let filterPatterns = [];
-                
-                if (currentTable === 'hole_data') {
-                    blastPattern = '1190-1185 BN# 8';
-                    filterPatterns = ['1190-1185 BN# 8', '1190-1185 BN8', '1190-1185 BN 8', '1190-1185#8'];
-                } else if (currentTable === 'hole_data_2') {
-                    blastPattern = '1185-1180 BN# 2';
-                    filterPatterns = ['1185-1180 BN# 2', '1185-1180 BN2', '1185-1180 BN 2', '1185-1180#2'];
-                } else if (currentTable === 'hole_data_1b') {
-                    blastPattern = '1185-1180 BN# 1b';
-                    filterPatterns = ['1185-1180 BN# 1b', '1185-1180 BN1b', '1185-1180 BN 1b', '1185-1180#1b'];
+                if (!data || data.length === 0) {
+                    console.log('No monitoring data found');
+                    monitoringData = [];
+                    populateMonitoringTable();
+                    return;
                 }
                 
-                // Filter and transform data
-                monitoringData = data
-                    .filter(row => {
-                        const ppv = parseFloat(row.ppv_actual) || 0;
-                        const pspl = parseFloat(row.pspl_actual) || 0;
-                        const shotNumber = (row.shot_number || '').toLowerCase();
-                        
-                        // Skip records with zero values
-                        if (ppv <= 0 || pspl <= 0) return false;
-                        
-                        // Filter by blast pattern
-                        return filterPatterns.some(pattern => 
-                            shotNumber.includes(pattern.toLowerCase())
-                        );
-                    })
-                    .map(row => ({
-                        type: "Feature",
-                        geometry: row.location ? JSON.parse(row.location) : null,
-                        properties: {
-                            id: row.id,
-                            date: row.date,
-                            time: row.time,
-                            location: row.monitoring_point,
-                            shot_number: row.shot_number,
-                            ppv: parseFloat(row.ppv_actual) || 0,
-                            pspl: parseFloat(row.pspl_actual) || 0,
-                            distance: parseFloat(row.distance_m) || 0,
-                            weather: row.weather_conditions || 'Unknown',
-                            rock_type: row.rock_type || 'Unknown',
-                            charge: parseFloat(row.cooperate_charge_kg) || 0,
-                            burden: parseFloat(row.burden) || 0,
-                            spacing: parseFloat(row.spacing) || 0,
-                            drill_depth: parseFloat(row.drill_depth) || 0,
-                            holes_design: parseInt(row.holes_design) || 0,
-                            holes_actual: parseInt(row.holes_actual) || 0,
-                            volume_actual: parseFloat(row.actual_volume) || 0,
-                            volume_planned: parseFloat(row.planned_volume) || 0,
-                            status: calculateStatus(
-                                parseFloat(row.ppv_actual) || 0,
-                                parseFloat(row.pspl_actual) || 0
-                            ),
-                            blast_pattern: blastPattern
-                        }
-                    }));
+                // Determine blast pattern based on current table
+                let blastPattern = '';
+                if (currentTable === 'hole_data') blastPattern = '1190-1185 BN# 8';
+                else if (currentTable === 'hole_data_2') blastPattern = '1185-1180 BN# 2';
+                else if (currentTable === 'hole_data_1b') blastPattern = '1185-1180 BN# 1b';
+                
+                monitoringData = data.map(row => ({
+                    type: "Feature",
+                    geometry: row.location || null,
+                    properties: {
+                        id: row.id,
+                        record_id: row.record_id,
+                        date: row.blast_date,
+                        time: row.blast_time,
+                        location: row.monitoring_point,
+                        pit_location: row.pit_location,
+                        shot_number: row.shot_number,
+                        ppv: row.ppv_actual || 0,
+                        pspl: row.pspl_actual || 0,
+                        distance: row.distance_m || 0,
+                        weather: row.weather_conditions || 'Unknown',
+                        rock_type: row.rock_type || 'Unknown',
+                        charge: row.cooperate_charge_kg || 0,
+                        burden: row.burden || 0,
+                        spacing: row.spacing || 0,
+                        drill_depth: row.drill_depth || 0,
+                        holes_design: row.holes_design || 0,
+                        holes_actual: row.holes_actual || 0,
+                        volume_actual: row.actual_volume || 0,
+                        volume_planned: row.planned_volume || 0,
+                        status: calculateStatus(
+                            row.ppv_actual || 0,
+                            row.pspl_actual || 0
+                        ),
+                        blast_pattern: blastPattern
+                    }
+                }));
                 
                 console.log(`Loaded ${monitoringData.length} monitoring records`);
-                
                 populateMonitoringTable();
                 plotMonitoringData();
+                createCharts(); // Make sure charts update with new data
                 
             } catch (error) {
                 console.error('Error loading monitoring data:', error);
-                showNotification(`Failed to load monitoring data: ${error.message}`, 'error');
+                showNotification('Failed to load monitoring data', 'error');
                 monitoringData = [];
                 populateMonitoringTable();
             }
@@ -1996,7 +1984,12 @@
                     actual: parseFloat(h.properties.actual_elevation) || 0,
                     design: parseFloat(h.properties.design_elevation) || 0
                 }))
-                .sort((a, b) => (a.holeId.localeCompare(b.holeId)));
+                .sort((a, b) => {
+                    // Convert to strings safely
+                    const aId = String(a.holeId || '');
+                    const bId = String(b.holeId || '');
+                    return aId.localeCompare(bId);
+                });
 
             charts.verticalDeviationChart = Highcharts.chart(container, {
                 chart: { type: 'line' },
