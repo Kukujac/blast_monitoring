@@ -1331,163 +1331,84 @@
             });
         }
 
+        // ============================================
+        // REPLACE loadMonitoringData FUNCTION
+        // ============================================
+        
         async function loadMonitoringData() {
-            const refreshBtn = document.getElementById('refresh-btn');
-            if (!refreshBtn) return;
-            
             try {
-                // URL without date parameters
-                const url = 'api/get_blasting_monitoring.php';
-                console.log('Loading monitoring data from:', url);
-
-                const response = await fetch(url);
+                const SUPABASE_URL = 'https://your-project-ref.supabase.co';  // Same URL
+                const SUPABASE_KEY = 'your-anon-key';                         // Same key
                 
-                if (!response.ok) {
-                    throw new Error(`Server returned ${response.status} ${response.statusText}`);
-                }
-
-                const geoJsonData = await response.json();
+                let url = `${SUPABASE_URL}/rest/v1/blasting_monitoring?select=*`;
                 
-                if (!geoJsonData || geoJsonData.type !== 'FeatureCollection' || !Array.isArray(geoJsonData.features)) {
-                    throw new Error('Invalid GeoJSON format: Expected FeatureCollection');
-                }
-
-                // Determine the blast pattern based on current data source
+                // Add filters based on current data source
+                const selector = document.getElementById('data-source-selector')?.value;
                 let blastPattern = '';
-                let filterPatterns = [];
                 
-                if (currentDataSource === 'api/get_hole_data.php') {
+                if (selector === 'get_hole_data.php') {
                     blastPattern = '1190-1185 BN# 8';
-                    filterPatterns = [
-                        '1190-1185 BN# 8',
-                        '1190-1185 BN8',
-                        '1190-1185 BN 8',
-                        '1190-1185#8',
-                        '1190-1185 #8'
-                    ];
-                } else if (currentDataSource === 'api/get_hole_data_2.php') {
+                } else if (selector === 'get_hole_data_2.php') {
                     blastPattern = '1185-1180 BN# 2';
-                    filterPatterns = [
-                        '1185-1180 BN# 2',
-                        '1185-1180 BN2',
-                        '1185-1180 BN 2',
-                        '1185-1180#2',
-                        '1185-1180 #2'
-                    ];
-                } else if (currentDataSource === 'api/get_hole_data_1b.php') {
+                } else if (selector === 'get_hole_data_1b.php') {
                     blastPattern = '1185-1180 BN# 1b';
-                    filterPatterns = [
-                        '1185-1180 BN# 1b',
-                        '1185-1180 BN1b',
-                        '1185-1180 BN 1b',
-                        '1185-1180#1b',
-                        '1185-1180 #1b',
-                        '1185-1180 BN# 1B',
-                        '1185-1180 BN1B',
-                        '1185-1180 BN 1B'
-                    ];
                 }
-
-                console.log(`Filtering monitoring data for: ${blastPattern}`);
-
-                // Filter monitoring data by the selected blast pattern and exclude zero/null values
-                monitoringData = geoJsonData.features.filter(feature => {
-                    const props = feature.properties || {};
-                    const shotNumber = props.shot_number || '';
-                    const ppv = parseNumber(props.ppv_actual, props.ppv || 0);
-                    const pspl = parseNumber(props.pspl_actual, props.pspl || 0);
-                    
-                    // Skip records with zero/null PPV or PSPL
-                    if (ppv <= 0 || pspl <= 0) return false;
-                    
-                    // Filter by blast pattern
-                    const shotNumLower = shotNumber.toLowerCase().trim();
-                    
-                    const matchesPattern = filterPatterns.some(pattern => {
-                        const patternLower = pattern.toLowerCase();
-                        return shotNumLower.includes(patternLower) || 
-                            shotNumLower === patternLower;
-                    });
-                    
-                    // For 1190-1185 BN# 8 specifically
-                    if (currentDataSource === 'api/get_hole_data.php') {
-                        const isBN8 = shotNumLower.includes('bn#8') || 
-                                    shotNumLower.includes('bn8') ||
-                                    shotNumLower.includes('bn 8') ||
-                                    shotNumLower.includes('#8') ||
-                                    (shotNumLower.includes('1190') && shotNumLower.includes('8') && !shotNumLower.includes('1b') && !shotNumLower.includes('2'));
-                        
-                        return matchesPattern || isBN8;
+                
+                if (blastPattern) {
+                    url += `&blast_pattern=ilike.%${encodeURIComponent(blastPattern)}%`;
+                }
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
                     }
-                    
-                    return matchesPattern;
-                }).map(feature => {
-                    const props = feature.properties || {};
-                    
-                    return {
-                        geometry: feature.geometry,
-                        properties: {
-                            id: props.id || 0,
-                            date: props.date || 'N/A',
-                            time: props.time || 'N/A',
-                            location: props.monitoring_point || props.location || 'Unknown',
-                            shot_number: props.shot_number || 'N/A',
-                            ppv: parseNumber(props.ppv_actual, props.ppv || 0),
-                            pspl: parseNumber(props.pspl_actual, props.pspl || 0),
-                            distance: parseNumber(props.distance_m, props.distance || 0),
-                            ppv_radial: parseNumber(props.ppv_actual, props.ppv || 0),
-                            ppv_pincl_limit: parseNumber(props.pmgl_ppv, props.ppv_limit || 1.5),
-                            pmgl_pspl_limit: parseNumber(props.pmgl_pspl, props.pspl_limit || 115),
-                            ppv_mincom: parseNumber(props.mincom_vibration_limit, 2),
-                            pspl_ache: parseNumber(props.pspl_actual, props.pspl || 0),
-                            pspl_bacle_limit: parseNumber(props.pmgl_pspl, props.pspl_limit || 115),
-                            pspl_mincom: parseNumber(props.mincom_airblast_limit, 117),
-                            status: calculateStatus(
-                                parseNumber(props.ppv_actual, props.ppv || 0),
-                                parseNumber(props.pspl_actual, props.pspl || 0),
-                                parseNumber(props.mincom_vibration_limit, 2),
-                                parseNumber(props.mincom_airblast_limit, 117)
-                            ),
-                            weather: props.weather_conditions || props.weather || 'Unknown',
-                            rock_type: props.rock_type || 'Unknown',
-                            charge: parseNumber(props.cooperate_charge_kg, props.charge || 0),
-                            burden: parseNumber(props.burden, 0),
-                            spacing: parseNumber(props.spacing, 0),
-                            drill_depth: parseNumber(props.drill_depth, 0),
-                            holes_design: parseNumber(props.holes_design, 0),
-                            holes_actual: parseNumber(props.holes_actual, 0),
-                            volume_actual: parseNumber(props.actual_volume, 0),
-                            volume_planned: parseNumber(props.planned_volume, 0),
-                            blast_pattern: blastPattern
-                        }
-                    };
                 });
-
-                console.log(`Filtered monitoring data for ${blastPattern}:`, monitoringData.length, "records");
-
-                if (monitoringData.length > 0) {
-                    populateMonitoringTable();
-                    plotMonitoringData();
-                    createCharts();
-                    showNotification(`Loaded ${monitoringData.length} monitoring records for ${blastPattern}`, 'success');
-                } else {
-                    showNotification(`No monitoring data found for ${blastPattern}`, 'warning');
-                    
-                    monitoringData = [];
-                    populateMonitoringTable();
-                    plotMonitoringData();
-                    createCharts();
-                }
-
+                
+                if (!response.ok) throw new Error(`Supabase returned ${response.status}`);
+                
+                const data = await response.json();
+                
+                // Transform data
+                monitoringData = data.map(row => ({
+                    geometry: row.location ? JSON.parse(row.location) : null,
+                    properties: {
+                        id: row.id,
+                        date: row.date,
+                        time: row.time,
+                        location: row.monitoring_point,
+                        shot_number: row.shot_number,
+                        ppv: row.ppv_actual,
+                        pspl: row.pspl_actual,
+                        distance: row.distance_m,
+                        weather: row.weather_conditions,
+                        rock_type: row.rock_type,
+                        charge: row.cooperate_charge_kg,
+                        burden: row.burden,
+                        spacing: row.spacing,
+                        drill_depth: row.drill_depth,
+                        holes_design: row.holes_design,
+                        holes_actual: row.holes_actual,
+                        volume_actual: row.actual_volume,
+                        volume_planned: row.planned_volume,
+                        status: calculateStatus(row.ppv_actual, row.pspl_actual)
+                    }
+                }));
+                
+                console.log(`Loaded ${monitoringData.length} monitoring records`);
+                populateMonitoringTable();
+                plotMonitoringData();
+                createCharts();
+                
             } catch (error) {
                 console.error('Monitoring data load failed:', error);
                 showNotification(`Failed to load monitoring data: ${error.message}`, 'error');
-                
-                monitoringData = [];
-                populateMonitoringTable();
-                plotMonitoringData();
             }
         }
+        
+        // ============================================
+        // REPLACE YOUR EXISTING loadHoleData FUNCTION WITH THIS
+        // ============================================
         
         async function loadHoleData() {
             const refreshBtn = document.getElementById('refresh-btn');
@@ -1497,54 +1418,86 @@
             refreshBtn.disabled = true;
             
             try {
-                let url;
+                // --- NEW: Supabase configuration ---
+                const SUPABASE_URL = 'https://your-project-ref.supabase.co';  // REPLACE with your URL
+                const SUPABASE_KEY = 'your-anon-key';                         // REPLACE with your anon key
+                
+                // Build the Supabase query
+                let url = `${SUPABASE_URL}/rest/v1/hole_data?select=*`;
                 
                 if (useDateSelection) {
-                    // Get hole date range values
-                    const holeDateFrom = document.getElementById('hole-date-from')?.value;
-                    const holeDateTo = document.getElementById('hole-date-to')?.value;
+                    const fromDate = document.getElementById('hole-date-from')?.value;
+                    const toDate = document.getElementById('hole-date-to')?.value;
                     
-                    // Use get_hole_data.php with date parameters
-                    url = 'api/get_hole_data.php';
-                    const params = new URLSearchParams();
-                    
-                    if (holeDateFrom) params.append('hole_date_from', holeDateFrom);
-                    if (holeDateTo) params.append('hole_date_to', holeDateTo);
-                    
-                    const queryString = params.toString();
-                    if (queryString) {
-                        url += '?' + queryString;
-                    }
-                    
+                    if (fromDate) url += `&blast_date=gte.${fromDate}`;
+                    if (toDate) url += `&blast_date=lte.${toDate}`;
                     console.log('Loading hole data by date range:', url);
                 } else {
-                    // Use the selected data source
-                    url = currentDataSource;
-                    console.log('Loading hole data by data source:', url);
+                    // Map the selected PHP file to the correct Supabase table
+                    const selector = document.getElementById('data-source-selector')?.value;
+                    const tableMap = {
+                        'get_hole_data.php': 'hole_data',
+                        'get_hole_data_1b.php': 'hole_data_1b',
+                        'get_hole_data_2.php': 'hole_data_2'
+                    };
+                    
+                    const tableName = tableMap[selector] || 'hole_data';
+                    url = `${SUPABASE_URL}/rest/v1/${tableName}?select=*`;
+                    console.log('Loading hole data from Supabase table:', tableName);
                 }
                 
-                const response = await fetch(url);
+                // Fetch data from Supabase
+                const response = await fetch(url, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
                 if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
+                    throw new Error(`Supabase returned ${response.status}: ${response.statusText}`);
                 }
                 
                 const data = await response.json();
-                if (!data || !Array.isArray(data.features)) {
-                    throw new Error('Invalid data format: expected GeoJSON with a "features" array');
-                }
+                console.log("Supabase data loaded:", data.length, "records");
                 
-                // Filter out holes with zero/null values
-                holeData = data.features.filter(hole => {
-                    const props = hole.properties;
-                    const deviation = parseFloat(props.hole_deviation) || 0;
-                    const actualElevation = parseFloat(props.actual_elevation) || 0;
-                    const designElevation = parseFloat(props.design_elevation) || 0;
-                    
-                    // Skip holes with zero/null deviation or elevations
-                    return deviation > 0 && actualElevation > 0 && designElevation > 0;
-                });
+                // Transform Supabase data to GeoJSON format your dashboard expects
+                holeData = data
+                    .filter(row => {
+                        // Filter out rows with zero/null values if needed
+                        const deviation = parseFloat(row.hole_deviation) || 0;
+                        const actualElevation = parseFloat(row.actual_elevation) || 0;
+                        return deviation > 0 && actualElevation > 0;
+                    })
+                    .map(row => ({
+                        type: "Feature",
+                        properties: {
+                            hole_id: row.hole_id,
+                            actual_elevation: row.actual_elevation,
+                            actual_easting: row.actual_easting,
+                            actual_northing: row.actual_northing,
+                            design_elevation: row.design_elevation,
+                            planned_elevation: row.planned_elevation,
+                            dx: row.dx,
+                            dy: row.dy,
+                            dz: row.dz,
+                            hole_deviation: row.hole_deviation,
+                            vx_02: row.vx_02,
+                            vy_02: row.vy_02,
+                            in_spec_02: row.in_spec_02,
+                            vx_04: row.vx_04,
+                            vy_04: row.vy_04,
+                            in_spec_04: row.in_spec_04,
+                            blast_date: row.blast_date
+                        },
+                        // Parse GeoJSON strings from database
+                        geometry_actual: row.geom_actual ? JSON.parse(row.geom_actual) : null,
+                        geometry_design: row.geom_design ? JSON.parse(row.geom_design) : null,
+                        geometry_planned: row.geom_planned ? JSON.parse(row.geom_planned) : null
+                    }));
                 
-                console.log("Filtered hole data loaded:", holeData.length, "holes");
+                console.log("Filtered hole data:", holeData.length, "holes");
                 
                 // Update UI
                 populateHoleTable();
@@ -1554,10 +1507,10 @@
                 createHorizontalDeviationChart();
                 updateBlastInfo();
                 
-                showNotification(`Loaded ${holeData.length} hole records`, 'success');
+                showNotification(`Loaded ${holeData.length} hole records from Supabase`, 'success');
                 
             } catch (error) {
-                console.error('Error loading hole data:', error);
+                console.error('Error loading hole data from Supabase:', error);
                 showNotification(`Error loading hole data: ${error.message}`, 'error');
                 holeData = [];
                 populateHoleTable();
