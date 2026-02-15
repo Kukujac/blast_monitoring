@@ -874,14 +874,19 @@
         
     <!-- Dashboard JavaScript with Supabase Integration -->
     <script>
-        // ============================================
-        // SUPABASE CONFIGURATION
-        // ============================================
+         // ============================================
+    // SUPABASE CONFIGURATION
+    // ============================================
         const SUPABASE_URL = 'https://aahrwtlmemaqacubievh.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaHJ3dGxtZW1hcWFjdWJpZXZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3ODg5MTgsImV4cCI6MjA4NjM2NDkxOH0.sCQwcgEtEh4VMcIswpF2xA7bHfnc2OiB911YAwZuzvc';
         
-        // Initialize Supabase client - ONLY ONCE
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Initialize Supabase client with a unique name to avoid conflicts
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Optional: assign to a global variable if needed elsewhere
+        window.supabaseClient = supabaseClient;
+        
+        console.log('Supabase client initialized:', supabaseClient ? '✅' : '❌');
 
         // ============================================
         // GLOBAL VARIABLES
