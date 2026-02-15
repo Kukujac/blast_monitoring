@@ -603,120 +603,116 @@
         // DATA LOADING FUNCTIONS
         // ============================================
         async function loadHoleData() {
-            const refreshBtn = document.getElementById('refresh-btn');
-            if (!refreshBtn) return;
+        const refreshBtn = document.getElementById('refresh-btn');
+        if (!refreshBtn) return;
+        
+        refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Loading Holes...';
+        refreshBtn.disabled = true;
+        
+        try {
+            // Get the correct table name from selector
+            const selector = document.getElementById('data-source-selector');
+            const tableName = selector ? selector.value : 'hole_data';
             
-            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Loading Holes...';
-            refreshBtn.disabled = true;
+            // Build the query
+            let url = `${SUPABASE_URL}/rest/v1/${tableName}?select=*`;
             
-            try {
-                // Use mock data if Supabase isn't configured
-                if (SUPABASE_URL.includes('your-project-ref')) {
-                    console.warn('Using mock data - please configure Supabase');
-                    useMockData();
-                    return;
-                }
-
-                let url = `${SUPABASE_URL}/rest/v1/${currentDataSource}?select=*`;
+            // Add date filters if using date selection
+            if (useDateSelection) {
+                const fromDate = document.getElementById('hole-date-from')?.value;
+                const toDate = document.getElementById('hole-date-to')?.value;
                 
-                if (useDateSelection) {
-                    const fromDate = document.getElementById('hole-date-from')?.value;
-                    const toDate = document.getElementById('hole-date-to')?.value;
-                    if (fromDate) url += `&blast_date=gte.${fromDate}`;
-                    if (toDate) url += `&blast_date=lte.${toDate}`;
-                }
-                
-                url += '&order=hole_id.asc';
-                
-                console.log('Fetching from Supabase:', url);
-                
-                const response = await fetch(url, {
-                    headers: {
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const data = await response.json();
-                console.log(`Loaded ${data.length} records`);
-                
-                processHoleData(data);
-                
-            } catch (error) {
-                console.error('Error loading hole data:', error);
-                showNotification(`Error: ${error.message}. Using mock data.`, 'warning');
-                useMockData();
-            } finally {
-                refreshBtn.innerHTML = '<i class="fas fa-sync-alt mr-1"></i> Refresh All';
-                refreshBtn.disabled = false;
-            }
-        }
-
-        function useMockData() {
-            // Create sample data for testing
-            holeData = [];
-            for (let i = 1; i <= 10; i++) {
-                holeData.push({
-                    type: "Feature",
-                    properties: {
-                        hole_id: `H${i.toString().padStart(3, '0')}`,
-                        actual_elevation: 1185 + Math.random() * 5,
-                        actual_easting: 615280 + Math.random() * 50,
-                        actual_northing: 665370 + Math.random() * 50,
-                        design_elevation: 1185,
-                        planned_elevation: 1185,
-                        dx: (Math.random() - 0.5) * 0.5,
-                        dy: (Math.random() - 0.5) * 0.5,
-                        dz: (Math.random() - 0.5) * 0.5,
-                        hole_deviation: Math.random() * 0.5,
-                        in_spec_02: Math.random() > 0.3,
-                        in_spec_04: Math.random() > 0.1,
-                        blast_date: new Date().toISOString().split('T')[0]
-                    },
-                    geometry_actual: null,
-                    geometry_design: null,
-                    geometry_planned: null
-                });
+                if (fromDate) url += `&blast_date=gte.${fromDate}`;
+                if (toDate) url += `&blast_date=lte.${toDate}`;
             }
             
-            processHoleData(holeData);
-            showNotification('Using mock data - configure Supabase for real data', 'info');
-        }
-
-        function processHoleData(data) {
-            holeData = data.filter(row => {
-                const deviation = parseFloat(row.hole_deviation) || 0;
-                return deviation > 0;
-            }).map(row => ({
-                type: "Feature",
-                properties: {
-                    hole_id: row.hole_id,
-                    actual_elevation: row.actual_elevation,
-                    actual_easting: row.actual_easting,
-                    actual_northing: row.actual_northing,
-                    design_elevation: row.design_elevation,
-                    planned_elevation: row.planned_elevation,
-                    dx: row.dx,
-                    dy: row.dy,
-                    dz: row.dz,
-                    hole_deviation: row.hole_deviation,
-                    vx_02: row.vx_02,
-                    vy_02: row.vy_02,
-                    in_spec_02: row.in_spec_02,
-                    vx_04: row.vx_04,
-                    vy_04: row.vy_04,
-                    in_spec_04: row.in_spec_04,
-                    blast_date: row.blast_date
-                },
-                geometry_actual: row.geom_actual ? (typeof row.geom_actual === 'string' ? JSON.parse(row.geom_actual) : row.geom_actual) : null,
-                geometry_design: row.geom_design ? (typeof row.geom_design === 'string' ? JSON.parse(row.geom_design) : row.geom_design) : null,
-                geometry_planned: row.geom_planned ? (typeof row.geom_planned === 'string' ? JSON.parse(row.geom_planned) : row.geom_planned) : null
-            }));
+            // Add ordering
+            url += '&order=hole_id.asc';
+            
+            console.log('Fetching from:', url);
+            
+            const response = await fetch(url, {
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log(`✅ Loaded ${data.length} records from ${tableName}`);
+            
+            if (data.length === 0) {
+                showNotification('No data found in table', 'warning');
+                holeData = [];
+            } else {
+                // Log first record to see structure
+                console.log('First record structure:', data[0]);
+                
+                // Process the data - matching your actual column names
+                holeData = data.map(row => {
+                    // Calculate deviation if not present
+                    const dx = parseFloat(row.dx) || 0;
+                    const dy = parseFloat(row.dy) || 0;
+                    const dz = parseFloat(row.dz) || 0;
+                    const deviation = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                    
+                    return {
+                        type: "Feature",
+                        properties: {
+                            hole_id: row.hole_id,
+                            // Use actual column names from your database
+                            actual_easting: row.actual_east || row.actual_easting,
+                            actual_northing: row.actual_north || row.actual_northing,
+                            actual_elevation: row.actual_elevation,
+                            design_easting: row.design_east || row.design_easting,
+                            design_northing: row.design_north || row.design_northing,
+                            design_elevation: row.design_elevation,
+                            planned_easting: row.planned_east || row.planned_easting,
+                            planned_northing: row.planned_north || row.planned_northing,
+                            planned_elevation: row.planned_elevation,
+                            dx: row.dx,
+                            dy: row.dy,
+                            dz: row.dz,
+                            hole_deviation: row.hole_deviation || deviation,
+                            in_spec_02: row.in_spec_02 || (deviation <= 0.2),
+                            in_spec_04: row.in_spec_04 || (deviation <= 0.4),
+                            blast_date: row.blast_date
+                        },
+                        // Handle geometry fields if they exist
+                        geometry_actual: row.geom_actual ? 
+                            (typeof row.geom_actual === 'string' ? JSON.parse(row.geom_actual) : row.geom_actual) : 
+                            (row.actual_east && row.actual_north ? {
+                                type: "Point",
+                                coordinates: [parseFloat(row.actual_east), parseFloat(row.actual_north)]
+                            } : null),
+                        geometry_design: row.geom_design ? 
+                            (typeof row.geom_design === 'string' ? JSON.parse(row.geom_design) : row.geom_design) : 
+                            (row.design_east && row.design_north ? {
+                                type: "Point",
+                                coordinates: [parseFloat(row.design_east), parseFloat(row.design_north)]
+                            } : null),
+                        geometry_planned: row.geom_planned ? 
+                            (typeof row.geom_planned === 'string' ? JSON.parse(row.geom_planned) : row.geom_planned) : 
+                            (row.planned_east && row.planned_north ? {
+                                type: "Point",
+                                coordinates: [parseFloat(row.planned_east), parseFloat(row.planned_north)]
+                            } : null)
+                    };
+                }).filter(row => {
+                    // Filter out rows with zero coordinates
+                    const east = row.properties.actual_easting;
+                    const north = row.properties.actual_northing;
+                    return east && north && parseFloat(east) !== 0 && parseFloat(north) !== 0;
+                });
+                
+                showNotification(`Loaded ${holeData.length} holes from database`, 'success');
+            }
             
             // Update UI
             populateHoleTable();
@@ -725,177 +721,72 @@
             createVerticalDeviationChart();
             createHorizontalDeviationChart();
             updateBlastInfo();
+            
+        } catch (error) {
+            console.error('Error loading hole data:', error);
+            showNotification(`Error: ${error.message}`, 'error');
+            holeData = [];
+            populateHoleTable();
+        } finally {
+            refreshBtn.innerHTML = '<i class="fas fa-sync-alt mr-1"></i> Refresh All';
+            refreshBtn.disabled = false;
         }
-
-        async function loadMonitoringData() {
-            try {
-                if (SUPABASE_URL.includes('your-project-ref')) {
-                    return;
-                }
-
-                const blastPatternMap = {
-                    'hole_data': '1190-1185 BN# 8',
-                    'hole_data_1b': '1185-1180 BN# 1b',
-                    'hole_data_2': '1185-1180 BN# 2'
-                };
-                
-                const blastPattern = blastPatternMap[currentDataSource] || '';
-                
-                let url = `${SUPABASE_URL}/rest/v1/blasting_monitoring?select=*`;
-                
-                if (blastPattern) {
-                    url += `&blast_pattern=ilike.%25${encodeURIComponent(blastPattern)}%25`;
-                }
-                
-                url += '&order=date.desc,time.desc';
-                
-                const response = await fetch(url, {
-                    headers: {
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                
-                const data = await response.json();
-                
-                monitoringData = data
-                    .filter(row => (parseFloat(row.ppv_actual) || 0) > 0)
-                    .map(row => ({
-                        geometry: row.location ? (typeof row.location === 'string' ? JSON.parse(row.location) : row.location) : null,
-                        properties: {
-                            id: row.id,
-                            date: row.date,
-                            time: row.time,
-                            location: row.monitoring_point,
-                            shot_number: row.shot_number,
-                            ppv: parseFloat(row.ppv_actual) || 0,
-                            pspl: parseFloat(row.pspl_actual) || 0,
-                            distance: parseFloat(row.distance_m) || 0,
-                            weather: row.weather_conditions,
-                            rock_type: row.rock_type,
-                            charge: parseFloat(row.cooperate_charge_kg) || 0,
-                            burden: parseFloat(row.burden) || 0,
-                            spacing: parseFloat(row.spacing) || 0,
-                            drill_depth: parseFloat(row.drill_depth) || 0,
-                            holes_design: parseInt(row.holes_design) || 0,
-                            holes_actual: parseInt(row.holes_actual) || 0,
-                            volume_actual: parseFloat(row.actual_volume) || 0,
-                            volume_planned: parseFloat(row.planned_volume) || 0,
-                            blast_pattern: row.blast_pattern,
-                            status: calculateStatus(
-                                parseFloat(row.ppv_actual) || 0,
-                                parseFloat(row.pspl_actual) || 0
-                            )
-                        }
-                    }));
-                
-                populateMonitoringTable();
-                plotMonitoringData();
-                createCharts();
-                
-            } catch (error) {
-                console.error('Monitoring data load failed:', error);
-                monitoringData = [];
-                populateMonitoringTable();
-            }
-        }
+    }
 
         // ============================================
         // TABLE POPULATION FUNCTIONS
         // ============================================
         function populateHoleTable() {
-            const tableBody = document.getElementById('hole-data-body');
-            if (!tableBody) return;
+        const tableBody = document.getElementById('hole-data-body');
+        if (!tableBody) return;
+        
+        tableBody.innerHTML = '';
+        
+        if (holeData.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="px-4 py-4 text-center text-gray-500">
+                        <i class="fas fa-info-circle mr-2"></i>No hole data available
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        holeData.forEach(hole => {
+            const props = hole.properties;
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-blue-50 cursor-pointer';
             
-            tableBody.innerHTML = '';
+            const deviation = parseFloat(props.hole_deviation) || 0;
+            let statusClass = '', statusText = '';
             
-            if (holeData.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="9" class="px-4 py-4 text-center text-gray-500">
-                            <i class="fas fa-info-circle mr-2"></i>No hole data available
-                        </td>
-                    </tr>
-                `;
-                return;
+            if (deviation <= 0.2) {
+                statusClass = 'bg-green-100 text-green-800';
+                statusText = 'Excellent';
+            } else if (deviation <= 0.4) {
+                statusClass = 'bg-yellow-100 text-yellow-800';
+                statusText = 'Warning';
+            } else {
+                statusClass = 'bg-red-100 text-red-800';
+                statusText = 'Critical';
             }
             
-            holeData.forEach(hole => {
-                const props = hole.properties;
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-blue-50 cursor-pointer';
-                
-                const deviation = parseFloat(props.hole_deviation) || 0;
-                let statusClass = '', statusText = '';
-                
-                if (deviation <= 0.2) {
-                    statusClass = 'bg-green-100 text-green-800';
-                    statusText = 'Excellent';
-                } else if (deviation <= 0.4) {
-                    statusClass = 'bg-yellow-100 text-yellow-800';
-                    statusText = 'Warning';
-                } else {
-                    statusClass = 'bg-red-100 text-red-800';
-                    statusText = 'Critical';
-                }
-                
-                row.innerHTML = `
-                    <td class="px-4 py-3">${props.hole_id || ''}</td>
-                    <td class="px-4 py-3">${(props.actual_easting || 0).toFixed(3)}</td>
-                    <td class="px-4 py-3">${(props.actual_northing || 0).toFixed(3)}</td>
-                    <td class="px-4 py-3">${(props.actual_elevation || 0).toFixed(3)}</td>
-                    <td class="px-4 py-3">${(props.dx || 0).toFixed(3)}</td>
-                    <td class="px-4 py-3">${(props.dy || 0).toFixed(3)}</td>
-                    <td class="px-4 py-3">${(props.dz || 0).toFixed(3)}</td>
-                    <td class="px-4 py-3 ${deviation > 0.4 ? 'text-red-600 font-bold' : deviation > 0.2 ? 'text-yellow-600 font-medium' : 'text-green-600'}">${deviation.toFixed(2)}</td>
-                    <td class="px-4 py-3"><span class="px-2 py-1 ${statusClass} text-xs rounded-full">${statusText}</span></td>
-                `;
-                
-                tableBody.appendChild(row);
-            });
-        }
-
-        function populateMonitoringTable() {
-            const tableBody = document.getElementById('monitoring-data-body');
-            if (!tableBody) return;
+            row.innerHTML = `
+                <td class="px-4 py-3">${props.hole_id || ''}</td>
+                <td class="px-4 py-3">${(props.actual_easting || 0).toFixed(3)}</td>
+                <td class="px-4 py-3">${(props.actual_northing || 0).toFixed(3)}</td>
+                <td class="px-4 py-3">${(props.actual_elevation || 0).toFixed(3)}</td>
+                <td class="px-4 py-3">${(props.dx || 0).toFixed(3)}</td>
+                <td class="px-4 py-3">${(props.dy || 0).toFixed(3)}</td>
+                <td class="px-4 py-3">${(props.dz || 0).toFixed(3)}</td>
+                <td class="px-4 py-3 ${deviation > 0.4 ? 'text-red-600 font-bold' : deviation > 0.2 ? 'text-yellow-600 font-medium' : 'text-green-600'}">${deviation.toFixed(3)}</td>
+                <td class="px-4 py-3"><span class="px-2 py-1 ${statusClass} text-xs rounded-full">${statusText}</span></td>
+            `;
             
-            tableBody.innerHTML = '';
-            
-            if (monitoringData.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="px-4 py-4 text-center text-gray-500">
-                            <i class="fas fa-info-circle mr-2"></i>No monitoring data available
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            monitoringData.forEach(item => {
-                const props = item.properties;
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-blue-50 cursor-pointer';
-                
-                let statusClass = '';
-                if (props.status === 'Normal') statusClass = 'bg-green-100 text-green-800';
-                else if (props.status === 'Warning') statusClass = 'bg-yellow-100 text-yellow-800';
-                else statusClass = 'bg-red-100 text-red-800';
-                
-                row.innerHTML = `
-                    <td class="px-4 py-3">${props.date || ''} ${props.time || ''}</td>
-                    <td class="px-4 py-3">${props.location || ''}</td>
-                    <td class="px-4 py-3">${(props.ppv || 0).toFixed(2)}</td>
-                    <td class="px-4 py-3">${(props.pspl || 0).toFixed(1)}</td>
-                    <td class="px-4 py-3"><span class="px-2 py-1 ${statusClass} text-xs rounded-full">${props.status || 'Unknown'}</span></td>
-                `;
-                
-                tableBody.appendChild(row);
-            });
-        }
+            tableBody.appendChild(row);
+        });
+    }
 
         // ============================================
         // MAP PLOTTING FUNCTIONS
