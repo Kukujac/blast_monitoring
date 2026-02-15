@@ -1201,29 +1201,29 @@
         async function loadMonitoringData() {
             try {
                 const { data, error } = await supabaseClient
-                    .from('blasting_monitoring')
-                    .select(`
-                        id,
-                        date,
-                        time,
-                        monitoring_point,
-                        shot_number,
-                        ppv_actual,
-                        pspl_actual,
-                        distance_m,
-                        weather_conditions,
-                        rock_type,
-                        cooperate_charge_kg,
-                        burden,
-                        spacing,
-                        drill_depth,
-                        holes_design,
-                        holes_actual,
-                        actual_volume,
-                        planned_volume,
-                        location
-                    `)
-                    .order('date', { ascending: false });
+                .from('blasting_monitoring')
+                .select(`
+                    id,
+                    monitoring_date,
+                    monitoring_time,
+                    monitoring_point,
+                    shot_number,
+                    ppv_actual,
+                    pspl_actual,
+                    distance_m,
+                    weather_conditions,
+                    rock_type,
+                    cooperate_charge_kg,
+                    burden,
+                    spacing,
+                    drill_depth,
+                    holes_design,
+                    holes_actual,
+                    actual_volume,
+                    planned_volume,
+                    location
+                `)
+                .order('monitoring_date', { ascending: false });
                 
                 if (error) throw error;
                 
@@ -1304,7 +1304,7 @@
             try {
                 const { data, error } = await supabaseClient
                     .from('pit_boundaries')
-                    .select('name, geometry');
+                    .select('name, geom');
                 
                 if (error) throw error;
                 
