@@ -1,0 +1,49 @@
+<?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+echo "<h1>Testing IPv4 with Correct Username</h1>";
+
+require_once 'config/supabase.php';
+
+echo "Host: " . DB_HOST . "<br>";
+echo "Port: " . DB_PORT . "<br>";
+echo "User: " . DB_USER . "<br>";
+
+try {
+    $conn = getDbConnection();
+    echo "<p style='color: green;'>✅ CONNECTION SUCCESSFUL!</p>";
+    
+    // Test query
+    $version = $conn->query("SELECT version()")->fetchColumn();
+    echo "PostgreSQL version: " . $version . "<br>";
+    
+    // List tables
+    $tables = $conn->query("
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public'
+        ORDER BY table_name
+    ")->fetchAll(PDO::FETCH_COLUMN);
+    
+    echo "<h3>Tables found:</h3>";
+    if (empty($tables)) {
+        echo "No tables found in public schema<br>";
+    } else {
+        echo "<ul>";
+        foreach ($tables as $table) {
+            try {
+                $count = $conn->query("SELECT COUNT(*) FROM \"$table\"")->fetchColumn();
+                echo "<li><strong>$table</strong>: $count records</li>";
+            } catch (Exception $e) {
+                echo "<li><strong>$table</strong>: Error counting - " . $e->getMessage() . "</li>";
+            }
+        }
+        echo "</ul>";
+    }
+    
+} catch (Exception $e) {
+    echo "<p style='color: red;'>❌ Connection failed: " . $e->getMessage() . "</p>";
+    echo "<p>Error code: " . $e->getCode() . "</p>";
+}
+?>
