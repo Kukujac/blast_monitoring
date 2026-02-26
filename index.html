@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Blast Data Monitoring Dashboard</title>
 
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS - This warning is normal and can be ignored during development -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Font Awesome -->
@@ -28,7 +28,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
-        /* Your existing styles - keep them exactly as they are */
+        /* Your existing styles */
         #vertical-deviation-chart { position: relative; height: 400px; width: 100%; border-left: 1px solid #ccc; border-right: 1px solid #ccc; }
         .deviation-bar { position: absolute; width: 8px; background: #3388ff; transform: translateX(-50%); }
         .deviation-line { position: absolute; width: 1px; transform: translateX(-50%); }
@@ -75,7 +75,7 @@
     </style>
 </head>
 <body class="bg-gray-50">
-    <!-- Header - Keep your existing header HTML exactly as is -->
+    <!-- Header -->
     <header class="bg-gradient-to-r from-blue-700 to-blue-900 text-white p-4 shadow-lg">
         <div class="container mx-auto flex flex-col md:flex-row justify-between items-center">
             <div class="flex items-center mb-4 md:mb-0">
@@ -87,7 +87,7 @@
             </div>
             
             <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4 w-full md:w-auto">
-                <!-- Data Source Selector - UPDATED with table names -->
+                <!-- Data Source Selector -->
                 <div class="relative data-source-selector w-full sm:w-64">
                     <select id="data-source-selector" class="w-full pl-4 pr-10 py-2 rounded-lg cursor-pointer">
                         <option value="hole_data">1190-1185 BN# 8</option>
@@ -131,10 +131,173 @@
         <!-- Map Container -->
         <div id="map" class="map-container w-full lg:w-2/3 rounded-xl overflow-hidden shadow-xl"></div>
         
-        <!-- Data Panel - Keep your existing panel HTML exactly as is -->
-        <div id="data-panel" class="data-panel w-full lg:w-1/3 bg-white rounded-xl shadow-xl p-4">
-            <!-- ... Your existing tabs and content ... -->
-            <!-- I'm omitting for brevity, but keep your exact HTML here -->
+        <!-- Data Panel -->
+        <div class="data-panel w-full lg:w-1/3 bg-white rounded-xl shadow-xl p-4">
+            <!-- Tabs -->
+            <div class="flex border-b mb-4">
+                <button class="tab-button flex-1 py-2 px-3 text-sm font-medium transition-colors bg-blue-600 text-white" data-tab="hole-data-tab" onclick="openTab('hole-data-tab')">
+                    <i class="fas fa-database mr-1"></i> Hole Data
+                </button>
+                <button class="tab-button flex-1 py-2 px-3 text-sm font-medium transition-colors bg-gray-200" data-tab="monitoring-tab" onclick="openTab('monitoring-tab')">
+                    <i class="fas fa-chart-line mr-1"></i> Monitoring
+                </button>
+                <button class="tab-button flex-1 py-2 px-3 text-sm font-medium transition-colors bg-gray-200" data-tab="summary-tab" onclick="openTab('summary-tab')">
+                    <i class="fas fa-chart-pie mr-1"></i> Summary
+                </button>
+            </div>
+            
+            <!-- Hole Data Tab -->
+            <div id="hole-data-tab" class="tab-content active">
+                <div class="mb-3 flex space-x-2">
+                    <input type="text" id="hole-id-filter" placeholder="Filter by Hole ID" class="flex-1 px-3 py-1 text-sm border rounded">
+                    <select id="deviation-filter" class="px-2 py-1 text-sm border rounded">
+                        <option value="">All Deviations</option>
+                        <option value="0-0.2">0-0.2m</option>
+                        <option value="0.2-0.4">0.2-0.4m</option>
+                        <option value="0.4+">>0.4m</option>
+                    </select>
+                    <select id="status-filter" class="px-2 py-1 text-sm border rounded">
+                        <option value="">All Status</option>
+                        <option value="Excellent">Excellent</option>
+                        <option value="Warning">Warning</option>
+                        <option value="Critical">Critical</option>
+                    </select>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table id="hole-data-table" class="min-w-full text-xs">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left">Hole ID</th>
+                                <th class="px-4 py-2 text-left">Easting</th>
+                                <th class="px-4 py-2 text-left">Northing</th>
+                                <th class="px-4 py-2 text-left">Elevation</th>
+                                <th class="px-4 py-2 text-left">Deviation</th>
+                                <th class="px-4 py-2 text-left">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hole-data-body">
+                            <tr><td colspan="6" class="px-4 py-4 text-center text-gray-500">Loading data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Monitoring Tab -->
+            <div id="monitoring-tab" class="tab-content">
+                <div class="mb-3">
+                    <select id="monitoring-filter" class="w-full px-3 py-1 text-sm border rounded">
+                        <option value="">All Status</option>
+                        <option value="Normal">Normal</option>
+                        <option value="Warning">Warning</option>
+                        <option value="Critical">Critical</option>
+                    </select>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table id="monitoring-data-table" class="min-w-full text-xs">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left">Date/Time</th>
+                                <th class="px-4 py-2 text-left">Location</th>
+                                <th class="px-4 py-2 text-left">PPV</th>
+                                <th class="px-4 py-2 text-left">PSPL</th>
+                                <th class="px-4 py-2 text-left">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monitoring-data-body">
+                            <tr><td colspan="5" class="px-4 py-4 text-center text-gray-500">Loading data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Summary Tab -->
+            <div id="summary-tab" class="tab-content">
+                <!-- Summary Tabs -->
+                <div class="flex border-b mb-3">
+                    <button class="summary-tab-button flex-1 py-1 px-2 text-xs font-medium transition-colors bg-blue-600 text-white" data-summary-tab="hole-summary" onclick="openSummaryTab('hole-summary')">
+                        Hole Summary
+                    </button>
+                    <button class="summary-tab-button flex-1 py-1 px-2 text-xs font-medium transition-colors bg-gray-200" data-summary-tab="blast-summary" onclick="openSummaryTab('blast-summary')">
+                        Blast Summary
+                    </button>
+                    <button class="summary-tab-button flex-1 py-1 px-2 text-xs font-medium transition-colors bg-gray-200" data-summary-tab="charts-summary" onclick="openSummaryTab('charts-summary')">
+                        Charts
+                    </button>
+                </div>
+                
+                <!-- Hole Summary Content -->
+                <div id="hole-summary" class="summary-tab-content active">
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <div class="bg-blue-50 p-2 rounded">
+                            <div class="text-xs text-gray-600">Total Holes</div>
+                            <div class="text-xl font-bold" id="total-holes">0</div>
+                        </div>
+                        <div class="bg-green-50 p-2 rounded">
+                            <div class="text-xs text-gray-600">In Spec (0.2m)</div>
+                            <div class="text-xl font-bold" id="in-spec">0%</div>
+                        </div>
+                        <div class="bg-yellow-50 p-2 rounded">
+                            <div class="text-xs text-gray-600">Avg Deviation</div>
+                            <div class="text-xl font-bold" id="avg-deviation-summary">0.00</div>
+                        </div>
+                        <div class="bg-red-50 p-2 rounded">
+                            <div class="text-xs text-gray-600">Max Deviation</div>
+                            <div class="text-xl font-bold" id="max-deviation">0.00</div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-xs">
+                        <h4 class="font-bold mb-1">Horizontal Deviation</h4>
+                        <div id="horizontal-deviation-chart" class="horizontal-deviation-container"></div>
+                        <div class="flex justify-between mt-1">
+                            <span class="text-green-600">Within 0.2m: <span id="holes-within-0.2">0</span></span>
+                            <span class="text-yellow-600">Within 0.4m: <span id="holes-within-0.4">0</span></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Blast Summary Content -->
+                <div id="blast-summary" class="summary-tab-content">
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <div class="bg-purple-50 p-2 rounded">
+                            <div class="text-xs text-gray-600">Monitoring Points</div>
+                            <div class="text-xl font-bold" id="total-monitoring">0</div>
+                        </div>
+                        <div class="bg-green-50 p-2 rounded">
+                            <div class="text-xs text-gray-600">Normal</div>
+                            <div class="text-xl font-bold" id="normal-count">0</div>
+                        </div>
+                        <div class="bg-yellow-50 p-2 rounded">
+                            <div class="text-xs text-gray-600">Warning</div>
+                            <div class="text-xl font-bold" id="warning-count">0</div>
+                        </div>
+                        <div class="bg-red-50 p-2 rounded">
+                            <div class="text-xs text-gray-600">Critical</div>
+                            <div class="text-xl font-bold" id="critical-count">0</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Charts Summary Content -->
+                <div id="charts-summary" class="summary-tab-content">
+                    <div class="space-y-3">
+                        <div>
+                            <h4 class="font-bold mb-1 text-xs">Deviation Distribution</h4>
+                            <canvas id="deviation-chart" style="height: 120px;"></canvas>
+                        </div>
+                        <div>
+                            <h4 class="font-bold mb-1 text-xs">Compliance</h4>
+                            <canvas id="compliance-chart" style="height: 120px;"></canvas>
+                        </div>
+                        <div>
+                            <h4 class="font-bold mb-1 text-xs">Hole Status</h4>
+                            <canvas id="hole-status-chart" style="height: 120px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -144,906 +307,869 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.fullscreen/2.0.0/Leaflet.fullscreen.min.js"></script>
     <script src="https://unpkg.com/leaflet-measure@3.1.0/dist/leaflet-measure.js"></script>
     
-    <!-- Dashboard JavaScript with Supabase Integration -->
+    <!-- Dashboard JavaScript -->
     <script>
-        // ============================================
-        // SUPABASE CONFIGURATION
-        // ============================================
-        const SUPABASE_URL = 'https://aahrwtlmemaqacubievh.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaHJ3dGxtZW1hcWFjdWJpZXZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3ODg5MTgsImV4cCI6MjA4NjM2NDkxOH0.sCQwcgEtEh4VMcIswpF2xA7bHfnc2OiB911YAwZuzvc';
-        
-        // Initialize Supabase client
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Wrap everything in an IIFE to avoid global scope pollution
+        (function() {
+            // ============================================
+            // SUPABASE CONFIGURATION
+            // ============================================
+            const SUPABASE_URL = 'https://aahrwtlmemaqacubievh.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaHJ3dGxtZW1hcWFjdWJpZXZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3ODg5MTgsImV4cCI6MjA4NjM2NDkxOH0.sCQwcgEtEh4VMcIswpF2xA7bHfnc2OiB911YAwZuzvc';
+            
+            // Initialize Supabase client
+            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // ============================================
-        // GLOBAL VARIABLES
-        // ============================================
-        let holeData = [];
-        let monitoringData = [];
-        let charts = {};
-        const DESIGN_ELEVATION = 1185;
-        let currentTable = 'hole_data';
-        let useDateSelection = false;
-        
-        // Layer groups
-        let actualLayer, designLayer, plannedLayer, monitoringLayer, pitLayer;
-        let map;
+            // ============================================
+            // GLOBAL VARIABLES
+            // ============================================
+            let holeData = [];
+            let monitoringData = [];
+            let charts = {};
+            const DESIGN_ELEVATION = 1185;
+            let currentTable = 'hole_data';
+            let useDateSelection = false;
+            
+            // Layer groups
+            let actualLayer, designLayer, plannedLayer, monitoringLayer, pitLayer;
+            let map;
 
-        // ============================================
-        // INITIALIZATION
-        // ============================================
-        function initializeDashboard() {
-            initMap();
-            setCurrentDate();
-            
-            const today = new Date();
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(today.getDate() - 30);
-            
-            document.getElementById('hole-date-from').value = thirtyDaysAgo.toISOString().split('T')[0];
-            document.getElementById('hole-date-to').value = today.toISOString().split('T')[0];
-            
-            setupEventListeners();
-            
-            const selector = document.getElementById('data-source-selector');
-            if (selector) {
-                const selectedOption = selector.options[selector.selectedIndex].text;
-                updateHeaderBlastInfo(selectedOption);
-                currentTable = selector.value;
-            }
-            
-            loadAllData();
-        }
-
-        // ============================================
-        // MAP INITIALIZATION
-        // ============================================
-        function initMap() {
-            map = L.map('map', {
-                fullscreenControl: true,
-                zoomControl: false
-            }).setView([-22.5, 118.5], 15);
-            
-            L.control.zoom({ position: 'topleft' }).addTo(map);
-            
-            const baseMaps = {
-                "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 23,
-                    attribution: '&copy; OpenStreetMap'
-                }),
-                "Satellite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                    maxZoom: 23,
-                    attribution: 'Tiles &copy; Esri'
-                })
-            };
-            
-            baseMaps.OpenStreetMap.addTo(map);
-            
-            actualLayer = L.layerGroup();
-            designLayer = L.layerGroup();
-            plannedLayer = L.layerGroup();
-            monitoringLayer = L.layerGroup();
-            pitLayer = L.layerGroup();
-            
-            const overlayMaps = {
-                "Actual Positions": actualLayer,
-                "Design Positions": designLayer,
-                "Planned Positions": plannedLayer,
-                "Monitoring Points": monitoringLayer,
-                "Pit Boundaries": pitLayer
-            };
-            
-            L.control.layers(baseMaps, overlayMaps, { collapsed: false, position: 'topright' }).addTo(map);
-            
-            addMapControls();
-            addLegend();
-            
-            L.control.measure({
-                position: 'topleft',
-                primaryLengthUnit: 'meters',
-                secondaryLengthUnit: 'kilometers',
-                primaryAreaUnit: 'sqmeters',
-                secondaryAreaUnit: 'hectares'
-            }).addTo(map);
-        }
-
-        function addMapControls() {
-            const mapControls = L.control({position: 'topleft'});
-            mapControls.onAdd = function() {
-                const div = L.DomUtil.create('div', 'map-controls bg-white p-3 rounded shadow');
-                div.innerHTML = `
-                    <h3 class="text-sm font-bold mb-2">Map Controls</h3>
-                    <button id="fit-all-btn" class="w-full bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs p-2 rounded mb-2">
-                        <i class="fas fa-expand mr-1"></i>Fit All Data
-                    </button>
-                    <button id="geolocate-btn" class="w-full bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs p-2 rounded">
-                        <i class="fas fa-location-arrow mr-1"></i>Locate Me
-                    </button>
-                `;
-                L.DomEvent.disableClickPropagation(div);
-                return div;
-            };
-            mapControls.addTo(map);
-        }
-
-        function addLegend() {
-            const legend = L.control({position: 'bottomright'});
-            legend.onAdd = function() {
-                const div = L.DomUtil.create('div', 'legend bg-white p-3 rounded shadow text-sm');
-                div.innerHTML = `
-                    <h4 class="font-bold mb-2">Legend</h4>
-                    <div class="flex items-center mb-1"><i class="w-4 h-4 bg-blue-600 rounded-full mr-2"></i> Actual Position</div>
-                    <div class="flex items-center mb-1"><i class="w-4 h-4 bg-red-500 rounded-full mr-2"></i> Design Position</div>
-                    <div class="flex items-center mb-1"><i class="w-4 h-4 bg-green-500 rounded-full mr-2"></i> Planned Position</div>
-                    <div class="flex items-center mb-1"><i class="w-4 h-4 bg-yellow-400 rounded-full mr-2"></i> Monitoring Point</div>
-                    <div class="flex items-center"><i class="w-4 h-4 bg-gray-500 mr-2" style="background: repeating-linear-gradient(45deg, #555, #555 2px, #888 2px, #888 4px);"></i> Pit Boundary</div>
-                `;
-                return div;
-            };
-            legend.addTo(map);
-        }
-
-        // ============================================
-        // DATA LOADING FUNCTIONS
-        // ============================================
-        async function loadAllData() {
-            await Promise.all([
-                loadHoleData(),
-                loadMonitoringData(),
-                loadPitData()
-            ]);
-        }
-
-        async function loadHoleData() {
-            try {
-                let query = supabase
-                    .from(currentTable)
-                    .select(`
-                        hole_id,
-                        actual_elevation,
-                        actual_easting,
-                        actual_northing,
-                        design_elevation,
-                        planned_elevation,
-                        dx, dy, dz,
-                        hole_deviation,
-                        in_spec_02,
-                        in_spec_04,
-                        blast_date,
-                        geom_actual,
-                        geom_design,
-                        geom_planned
-                    `);
+            // ============================================
+            // INITIALIZATION
+            // ============================================
+            function initializeDashboard() {
+                initMap();
+                setCurrentDate();
                 
-                if (useDateSelection) {
-                    const dateFrom = document.getElementById('hole-date-from').value;
-                    const dateTo = document.getElementById('hole-date-to').value;
-                    if (dateFrom) query = query.gte('blast_date', dateFrom);
-                    if (dateTo) query = query.lte('blast_date', dateTo);
+                const today = new Date();
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(today.getDate() - 30);
+                
+                document.getElementById('hole-date-from').value = thirtyDaysAgo.toISOString().split('T')[0];
+                document.getElementById('hole-date-to').value = today.toISOString().split('T')[0];
+                
+                setupEventListeners();
+                
+                const selector = document.getElementById('data-source-selector');
+                if (selector) {
+                    const selectedOption = selector.options[selector.selectedIndex].text;
+                    updateHeaderBlastInfo(selectedOption);
+                    currentTable = selector.value;
                 }
                 
-                const { data, error } = await query;
-                if (error) throw error;
+                loadAllData();
+            }
+
+            // ============================================
+            // MAP INITIALIZATION
+            // ============================================
+            function initMap() {
+                map = L.map('map', {
+                    fullscreenControl: true,
+                    zoomControl: false
+                }).setView([-22.5, 118.5], 15);
                 
-                holeData = data
-                    .filter(row => {
-                        const dev = parseFloat(row.hole_deviation) || 0;
-                        const actEl = parseFloat(row.actual_elevation) || 0;
-                        const desEl = parseFloat(row.design_elevation) || 0;
-                        return dev > 0 && actEl > 0 && desEl > 0;
+                L.control.zoom({ position: 'topleft' }).addTo(map);
+                
+                const baseMaps = {
+                    "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 23,
+                        attribution: '&copy; OpenStreetMap'
+                    }),
+                    "Satellite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                        maxZoom: 23,
+                        attribution: 'Tiles &copy; Esri'
                     })
-                    .map(row => ({
-                        type: "Feature",
-                        properties: {
-                            hole_id: row.hole_id,
-                            actual_elevation: row.actual_elevation,
-                            actual_northing: row.actual_northing,
-                            actual_easting: row.actual_easting,
-                            design_elevation: row.design_elevation,
-                            planned_elevation: row.planned_elevation,
-                            dx: row.dx, dy: row.dy, dz: row.dz,
-                            hole_deviation: row.hole_deviation,
-                            in_spec_02: row.in_spec_02,
-                            in_spec_04: row.in_spec_04,
-                            blast_date: row.blast_date
-                        },
-                        geometry_actual: row.geom_actual || null,
-                        geometry_design: row.geom_design || null,
-                        geometry_planned: row.geom_planned || null
-                    }));
+                };
                 
-                console.log(`Loaded ${holeData.length} holes from ${currentTable}`);
-                populateHoleTable();
-                plotHoleData();
-                createCharts();
-                createVerticalDeviationChart();
-                createHorizontalDeviationChart();
-                updateBlastInfo();
+                baseMaps.OpenStreetMap.addTo(map);
                 
-            } catch (error) {
-                console.error('Error loading hole data:', error);
-                showNotification(`Error: ${error.message}`, 'error');
-                holeData = [];
-                populateHoleTable();
+                actualLayer = L.layerGroup();
+                designLayer = L.layerGroup();
+                plannedLayer = L.layerGroup();
+                monitoringLayer = L.layerGroup();
+                pitLayer = L.layerGroup();
+                
+                const overlayMaps = {
+                    "Actual Positions": actualLayer,
+                    "Design Positions": designLayer,
+                    "Planned Positions": plannedLayer,
+                    "Monitoring Points": monitoringLayer,
+                    "Pit Boundaries": pitLayer
+                };
+                
+                L.control.layers(baseMaps, overlayMaps, { collapsed: false, position: 'topright' }).addTo(map);
+                
+                addMapControls();
+                addLegend();
+                
+                L.control.measure({
+                    position: 'topleft',
+                    primaryLengthUnit: 'meters',
+                    secondaryLengthUnit: 'kilometers',
+                    primaryAreaUnit: 'sqmeters',
+                    secondaryAreaUnit: 'hectares'
+                }).addTo(map);
             }
-        }
 
-        async function loadMonitoringData() {
-            try {
-                const { data, error } = await supabase
-                    .from('blasting_monitoring')
-                    .select(`
-                        id, record_id, blast_date, blast_time, pit_location,
-                        monitoring_point, shot_number, ppv_actual, pspl_actual,
-                        distance_m, weather_conditions, rock_type, cooperate_charge_kg,
-                        burden, spacing, drill_depth, holes_design, holes_actual,
-                        actual_volume, planned_volume, geom
-                    `)
-                    .order('blast_date', { ascending: false });
-                
-                if (error) throw error;
-                
-                let blastPattern = '1190-1185 BN# 8';
-                if (currentTable === 'hole_data_2') blastPattern = '1185-1180 BN# 2';
-                else if (currentTable === 'hole_data_1b') blastPattern = '1185-1180 BN# 1b';
-                
-                monitoringData = (data || []).map(row => ({
-                    type: "Feature",
-                    geometry: row.geom || null,
-                    properties: {
-                        id: row.id, date: row.blast_date, time: row.blast_time,
-                        location: row.monitoring_point, pit_location: row.pit_location,
-                        shot_number: row.shot_number, ppv: row.ppv_actual || 0,
-                        pspl: row.pspl_actual || 0, distance: row.distance_m || 0,
-                        weather: row.weather_conditions || 'Unknown',
-                        rock_type: row.rock_type || 'Unknown',
-                        charge: row.cooperate_charge_kg || 0,
-                        burden: row.burden || 0, spacing: row.spacing || 0,
-                        drill_depth: row.drill_depth || 0,
-                        holes_design: row.holes_design || 0,
-                        holes_actual: row.holes_actual || 0,
-                        volume_actual: row.actual_volume || 0,
-                        volume_planned: row.planned_volume || 0,
-                        status: calculateStatus(row.ppv_actual || 0, row.pspl_actual || 0),
-                        blast_pattern: blastPattern
+            function addMapControls() {
+                const mapControls = L.control({position: 'topleft'});
+                mapControls.onAdd = function() {
+                    const div = L.DomUtil.create('div', 'map-controls bg-white p-3 rounded shadow');
+                    div.innerHTML = `
+                        <h3 class="text-sm font-bold mb-2">Map Controls</h3>
+                        <button id="fit-all-btn" class="w-full bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs p-2 rounded mb-2">
+                            <i class="fas fa-expand mr-1"></i>Fit All Data
+                        </button>
+                        <button id="geolocate-btn" class="w-full bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs p-2 rounded">
+                            <i class="fas fa-location-arrow mr-1"></i>Locate Me
+                        </button>
+                    `;
+                    L.DomEvent.disableClickPropagation(div);
+                    return div;
+                };
+                mapControls.addTo(map);
+            }
+
+            function addLegend() {
+                const legend = L.control({position: 'bottomright'});
+                legend.onAdd = function() {
+                    const div = L.DomUtil.create('div', 'legend bg-white p-3 rounded shadow text-sm');
+                    div.innerHTML = `
+                        <h4 class="font-bold mb-2">Legend</h4>
+                        <div class="flex items-center mb-1"><i class="w-4 h-4 bg-blue-600 rounded-full mr-2"></i> Actual Position</div>
+                        <div class="flex items-center mb-1"><i class="w-4 h-4 bg-red-500 rounded-full mr-2"></i> Design Position</div>
+                        <div class="flex items-center mb-1"><i class="w-4 h-4 bg-green-500 rounded-full mr-2"></i> Planned Position</div>
+                        <div class="flex items-center mb-1"><i class="w-4 h-4 bg-yellow-400 rounded-full mr-2"></i> Monitoring Point</div>
+                        <div class="flex items-center"><i class="w-4 h-4 bg-gray-500 mr-2" style="background: repeating-linear-gradient(45deg, #555, #555 2px, #888 2px, #888 4px);"></i> Pit Boundary</div>
+                    `;
+                    return div;
+                };
+                legend.addTo(map);
+            }
+
+            // ============================================
+            // DATA LOADING FUNCTIONS
+            // ============================================
+            async function loadAllData() {
+                await Promise.all([
+                    loadHoleData(),
+                    loadMonitoringData(),
+                    loadPitData()
+                ]);
+            }
+
+            async function loadHoleData() {
+                try {
+                    let query = supabase
+                        .from(currentTable)
+                        .select(`
+                            hole_id,
+                            actual_elevation,
+                            actual_easting,
+                            actual_northing,
+                            design_elevation,
+                            planned_elevation,
+                            dx, dy, dz,
+                            hole_deviation,
+                            in_spec_02,
+                            in_spec_04,
+                            blast_date,
+                            geom_actual,
+                            geom_design,
+                            geom_planned
+                        `);
+                    
+                    if (useDateSelection) {
+                        const dateFrom = document.getElementById('hole-date-from').value;
+                        const dateTo = document.getElementById('hole-date-to').value;
+                        if (dateFrom) query = query.gte('blast_date', dateFrom);
+                        if (dateTo) query = query.lte('blast_date', dateTo);
                     }
-                }));
-                
-                console.log(`Loaded ${monitoringData.length} monitoring records`);
-                populateMonitoringTable();
-                plotMonitoringData();
-                
-            } catch (error) {
-                console.error('Error loading monitoring data:', error);
-                monitoringData = [];
-                populateMonitoringTable();
+                    
+                    const { data, error } = await query;
+                    if (error) throw error;
+                    
+                    holeData = (data || [])
+                        .filter(row => {
+                            const dev = parseFloat(row.hole_deviation) || 0;
+                            const actEl = parseFloat(row.actual_elevation) || 0;
+                            const desEl = parseFloat(row.design_elevation) || 0;
+                            return dev > 0 && actEl > 0 && desEl > 0;
+                        })
+                        .map(row => ({
+                            type: "Feature",
+                            properties: {
+                                hole_id: row.hole_id,
+                                actual_elevation: row.actual_elevation,
+                                actual_northing: row.actual_northing,
+                                actual_easting: row.actual_easting,
+                                design_elevation: row.design_elevation,
+                                planned_elevation: row.planned_elevation,
+                                dx: row.dx, dy: row.dy, dz: row.dz,
+                                hole_deviation: row.hole_deviation,
+                                in_spec_02: row.in_spec_02,
+                                in_spec_04: row.in_spec_04,
+                                blast_date: row.blast_date
+                            },
+                            geometry_actual: row.geom_actual || null,
+                            geometry_design: row.geom_design || null,
+                            geometry_planned: row.geom_planned || null
+                        }));
+                    
+                    console.log(`Loaded ${holeData.length} holes from ${currentTable}`);
+                    populateHoleTable();
+                    plotHoleData();
+                    createCharts();
+                    createVerticalDeviationChart();
+                    createHorizontalDeviationChart();
+                    updateBlastInfo();
+                    
+                } catch (error) {
+                    console.error('Error loading hole data:', error);
+                    holeData = [];
+                    populateHoleTable();
+                }
             }
-        }
 
-        async function loadPitData() {
-            try {
-                const { data, error } = await supabase
-                    .from('pit_boundaries')
-                    .select('name, geom');
+            async function loadMonitoringData() {
+                try {
+                    const { data, error } = await supabase
+                        .from('blasting_monitoring')
+                        .select(`
+                            id, record_id, blast_date, blast_time, pit_location,
+                            monitoring_point, shot_number, ppv_actual, pspl_actual,
+                            distance_m, weather_conditions, rock_type, cooperate_charge_kg,
+                            burden, spacing, drill_depth, holes_design, holes_actual,
+                            actual_volume, planned_volume, geom
+                        `)
+                        .order('blast_date', { ascending: false });
+                    
+                    if (error) throw error;
+                    
+                    let blastPattern = '1190-1185 BN# 8';
+                    if (currentTable === 'hole_data_2') blastPattern = '1185-1180 BN# 2';
+                    else if (currentTable === 'hole_data_1b') blastPattern = '1185-1180 BN# 1b';
+                    
+                    monitoringData = (data || []).map(row => ({
+                        type: "Feature",
+                        geometry: row.geom || null,
+                        properties: {
+                            id: row.id, date: row.blast_date, time: row.blast_time,
+                            location: row.monitoring_point, pit_location: row.pit_location,
+                            shot_number: row.shot_number, ppv: row.ppv_actual || 0,
+                            pspl: row.pspl_actual || 0, distance: row.distance_m || 0,
+                            weather: row.weather_conditions || 'Unknown',
+                            rock_type: row.rock_type || 'Unknown',
+                            charge: row.cooperate_charge_kg || 0,
+                            burden: row.burden || 0, spacing: row.spacing || 0,
+                            drill_depth: row.drill_depth || 0,
+                            holes_design: row.holes_design || 0,
+                            holes_actual: row.holes_actual || 0,
+                            volume_actual: row.actual_volume || 0,
+                            volume_planned: row.planned_volume || 0,
+                            status: calculateStatus(row.ppv_actual || 0, row.pspl_actual || 0),
+                            blast_pattern: blastPattern
+                        }
+                    }));
+                    
+                    console.log(`Loaded ${monitoringData.length} monitoring records`);
+                    populateMonitoringTable();
+                    plotMonitoringData();
+                    updateBlastMonitoringCounts();
+                    
+                } catch (error) {
+                    console.error('Error loading monitoring data:', error);
+                    monitoringData = [];
+                    populateMonitoringTable();
+                }
+            }
+
+            async function loadPitData() {
+                try {
+                    const { data, error } = await supabase
+                        .from('pit_boundaries')
+                        .select('name, geom');
+                    
+                    if (error) throw error;
+                    
+                    pitLayer.clearLayers();
+                    
+                    const features = (data || []).map(row => ({
+                        type: "Feature",
+                        geometry: row.geom,
+                        properties: { name: row.name }
+                    }));
+                    
+                    L.geoJSON(features, {
+                        style: {
+                            color: '#555', weight: 2, fillColor: '#888',
+                            fillOpacity: 0.5, dashArray: '5, 5'
+                        },
+                        onEachFeature: (feature, layer) => {
+                            if (feature.properties.name) {
+                                layer.bindPopup(`<b>${feature.properties.name}</b>`);
+                            }
+                        }
+                    }).addTo(pitLayer);
+                    
+                    pitLayer.addTo(map);
+                    console.log(`Loaded ${features.length} pit boundaries`);
+                    
+                } catch (error) {
+                    console.error('Error loading pit data:', error);
+                }
+            }
+
+            // ============================================
+            // PLOTTING FUNCTIONS
+            // ============================================
+            function plotHoleData() {
+                if (!actualLayer) return;
                 
-                if (error) throw error;
+                actualLayer.clearLayers();
+                designLayer.clearLayers();
+                plannedLayer.clearLayers();
                 
-                pitLayer.clearLayers();
+                const actualMarkers = [];
                 
-                const features = (data || []).map(row => ({
-                    type: "Feature",
-                    geometry: row.geom,
-                    properties: { name: row.name }
-                }));
-                
-                L.geoJSON(features, {
-                    style: {
-                        color: '#555', weight: 2, fillColor: '#888',
-                        fillOpacity: 0.5, dashArray: '5, 5'
-                    },
-                    onEachFeature: (feature, layer) => {
-                        if (feature.properties.name) {
-                            layer.bindPopup(`<b>${feature.properties.name}</b>`);
+                holeData.forEach(feature => {
+                    const props = feature.properties;
+                    const deviation = parseFloat(props.hole_deviation) || 0;
+                    
+                    if (feature.geometry_actual) {
+                        try {
+                            const marker = L.geoJSON(feature.geometry_actual, {
+                                pointToLayer: (geoJsonPoint, latlng) => {
+                                    return L.circleMarker(latlng, {
+                                        color: '#3333ff',
+                                        fillColor: deviation > 0.4 ? '#ff3333' : deviation > 0.2 ? '#ffcc00' : '#33ff33',
+                                        fillOpacity: 0.7,
+                                        radius: 6,
+                                        weight: 2
+                                    }).bindPopup(`
+                                        <div class="text-sm">
+                                            <h3 class="font-bold mb-1">Hole ${props.hole_id}</h3>
+                                            <p><b>Deviation:</b> ${deviation.toFixed(2)}m</p>
+                                            <p><b>Status:</b> ${deviation <= 0.2 ? 'Excellent' : deviation <= 0.4 ? 'Warning' : 'Critical'}</p>
+                                        </div>
+                                    `);
+                                }
+                            });
+                            actualMarkers.push(marker);
+                        } catch (e) {
+                            console.warn('Error plotting hole:', props.hole_id);
                         }
                     }
-                }).addTo(pitLayer);
+                });
                 
-                pitLayer.addTo(map);
-                console.log(`Loaded ${features.length} pit boundaries`);
+                const actualCluster = L.markerClusterGroup({
+                    chunkedLoading: true,
+                    maxClusterRadius: 50,
+                    spiderfyOnMaxZoom: true,
+                    showCoverageOnHover: true
+                });
                 
-            } catch (error) {
-                console.error('Error loading pit data:', error);
+                actualMarkers.forEach(m => actualCluster.addLayer(m));
+                actualLayer.addLayer(actualCluster);
+                actualLayer.addTo(map);
+                
+                if (actualMarkers.length > 0) setTimeout(fitAllData, 500);
             }
-        }
 
-        // ============================================
-        // PLOTTING FUNCTIONS
-        // ============================================
-        function plotHoleData() {
-            if (!actualLayer) return;
-            
-            actualLayer.clearLayers();
-            designLayer.clearLayers();
-            plannedLayer.clearLayers();
-            
-            const actualMarkers = [];
-            
-            holeData.forEach(feature => {
-                const props = feature.properties;
-                const deviation = parseFloat(props.hole_deviation) || 0;
+            function plotMonitoringData() {
+                if (!monitoringLayer) return;
                 
-                if (feature.geometry_actual) {
+                monitoringLayer.clearLayers();
+                
+                monitoringData.forEach(item => {
+                    if (!item.geometry) return;
+                    
                     try {
-                        const marker = L.geoJSON(feature.geometry_actual, {
+                        const marker = L.geoJSON(item.geometry, {
                             pointToLayer: (geoJsonPoint, latlng) => {
+                                let color = '#66bb6a';
+                                if (item.properties.status === 'Warning') color = '#ffcc00';
+                                if (item.properties.status === 'Critical') color = '#ff4444';
+                                
                                 return L.circleMarker(latlng, {
-                                    color: '#3333ff',
-                                    fillColor: deviation > 0.4 ? '#ff3333' : deviation > 0.2 ? '#ffcc00' : '#33ff33',
-                                    fillOpacity: 0.7,
-                                    radius: 6,
-                                    weight: 2
+                                    color: color, fillColor: color,
+                                    radius: 6, fillOpacity: 0.8, weight: 2
                                 }).bindPopup(`
                                     <div class="text-sm">
-                                        <h3 class="font-bold mb-1">Hole ${props.hole_id}</h3>
-                                        <p><b>Deviation:</b> ${deviation.toFixed(2)}m</p>
-                                        <p><b>Status:</b> ${props.in_spec_02 ? 'Excellent' : 'Critical'}</p>
+                                        <h3 class="font-bold mb-1">${item.properties.location}</h3>
+                                        <p><b>Date:</b> ${item.properties.date}</p>
+                                        <p><b>PPV:</b> ${item.properties.ppv.toFixed(2)} mm/s</p>
+                                        <p><b>PSPL:</b> ${item.properties.pspl.toFixed(1)} dB</p>
+                                        <p><b>Status:</b> ${item.properties.status}</p>
                                     </div>
                                 `);
                             }
                         });
-                        actualMarkers.push(marker);
+                        monitoringLayer.addLayer(marker);
                     } catch (e) {
-                        console.warn('Error plotting hole:', props.hole_id);
+                        console.warn('Error plotting monitoring point');
                     }
-                }
-            });
-            
-            const actualCluster = L.markerClusterGroup({
-                chunkedLoading: true,
-                maxClusterRadius: 50,
-                spiderfyOnMaxZoom: true,
-                showCoverageOnHover: true
-            });
-            
-            actualMarkers.forEach(m => actualCluster.addLayer(m));
-            actualLayer.addLayer(actualCluster);
-            actualLayer.addTo(map);
-            
-            if (actualMarkers.length > 0) setTimeout(fitAllData, 500);
-        }
-
-        function plotMonitoringData() {
-            if (!monitoringLayer) return;
-            
-            monitoringLayer.clearLayers();
-            
-            monitoringData.forEach(item => {
-                if (!item.geometry) return;
+                });
                 
-                try {
-                    const marker = L.geoJSON(item.geometry, {
-                        pointToLayer: (geoJsonPoint, latlng) => {
-                            let color = '#66bb6a';
-                            if (item.properties.status === 'Warning') color = '#ffcc00';
-                            if (item.properties.status === 'Critical') color = '#ff4444';
-                            
-                            return L.circleMarker(latlng, {
-                                color: color, fillColor: color,
-                                radius: 6, fillOpacity: 0.8, weight: 2
-                            }).bindPopup(`
-                                <div class="text-sm">
-                                    <h3 class="font-bold mb-1">${item.properties.location}</h3>
-                                    <p><b>Date:</b> ${item.properties.date}</p>
-                                    <p><b>PPV:</b> ${item.properties.ppv.toFixed(2)} mm/s</p>
-                                    <p><b>PSPL:</b> ${item.properties.pspl.toFixed(1)} dB</p>
-                                    <p><b>Status:</b> ${item.properties.status}</p>
-                                </div>
-                            `);
-                        }
-                    });
-                    monitoringLayer.addLayer(marker);
-                } catch (e) {
-                    console.warn('Error plotting monitoring point');
-                }
-            });
-            
-            monitoringLayer.addTo(map);
-        }
+                monitoringLayer.addTo(map);
+            }
 
-        function fitAllData() {
-            if (!map) return;
-            
-            const bounds = L.latLngBounds();
-            let hasData = false;
+            function fitAllData() {
+                if (!map) return;
+                
+                const bounds = L.latLngBounds();
+                let hasData = false;
 
-            [actualLayer, monitoringLayer, pitLayer].forEach(layer => {
-                if (layer && layer.getLayers().length > 0) {
-                    try {
-                        const layerBounds = layer.getBounds();
-                        if (layerBounds.isValid()) {
-                            bounds.extend(layerBounds);
-                            hasData = true;
+                [actualLayer, monitoringLayer, pitLayer].forEach(layer => {
+                    if (layer && layer.getLayers().length > 0) {
+                        try {
+                            const layerBounds = layer.getBounds();
+                            if (layerBounds.isValid()) {
+                                bounds.extend(layerBounds);
+                                hasData = true;
+                            }
+                        } catch (e) {
+                            // Handle case where getBounds fails
                         }
-                    } catch (e) {
-                        layer.eachLayer(l => {
-                            if (l.getLatLng) bounds.extend(l.getLatLng());
-                        });
                     }
+                });
+
+                if (hasData) {
+                    map.fitBounds(bounds, { padding: [20, 20], maxZoom: 18 });
                 }
-            });
-
-            if (hasData) {
-                map.fitBounds(bounds, { padding: [20, 20], maxZoom: 18 });
             }
-        }
 
-        // ============================================
-        // TABLE POPULATION FUNCTIONS
-        // ============================================
-        function populateHoleTable() {
-            const tbody = document.getElementById('hole-data-body');
-            if (!tbody) return;
-            
-            tbody.innerHTML = '';
-            
-            if (holeData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" class="px-4 py-4 text-center text-gray-500">No data available</td></tr>';
-                return;
-            }
-            
-            holeData.forEach(hole => {
-                const p = hole.properties;
-                const dev = parseFloat(p.hole_deviation) || 0;
-                const status = dev <= 0.2 ? 'Excellent' : dev <= 0.4 ? 'Warning' : 'Critical';
-                const statusClass = dev <= 0.2 ? 'bg-green-100 text-green-800' : dev <= 0.4 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
+            // ============================================
+            // TABLE POPULATION FUNCTIONS
+            // ============================================
+            function populateHoleTable() {
+                const tbody = document.getElementById('hole-data-body');
+                if (!tbody) return;
                 
-                tbody.innerHTML += `
-                    <tr class="hover:bg-blue-50 cursor-pointer">
-                        <td class="px-4 py-3">${p.hole_id || ''}</td>
-                        <td class="px-4 py-3">${Number(p.actual_easting).toFixed(3)}</td>
-                        <td class="px-4 py-3">${Number(p.actual_northing).toFixed(3)}</td>
-                        <td class="px-4 py-3">${Number(p.actual_elevation).toFixed(3)}</td>
-                        <td class="px-4 py-3 ${dev > 0.4 ? 'text-red-600' : dev > 0.2 ? 'text-yellow-600' : 'text-green-600'}">${dev.toFixed(2)}</td>
-                        <td class="px-4 py-3"><span class="px-2 py-1 ${statusClass} text-xs rounded-full">${status}</span></td>
-                    </tr>
-                `;
-            });
-        }
-
-        function populateMonitoringTable() {
-            const tbody = document.getElementById('monitoring-data-body');
-            if (!tbody) return;
-            
-            tbody.innerHTML = '';
-            
-            if (monitoringData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center text-gray-500">No monitoring data</td></tr>';
-                return;
-            }
-            
-            monitoringData.forEach(item => {
-                const p = item.properties;
-                const statusClass = p.status === 'Normal' ? 'bg-green-100 text-green-800' :
-                                   p.status === 'Warning' ? 'bg-yellow-100 text-yellow-800' :
-                                   'bg-red-100 text-red-800';
+                tbody.innerHTML = '';
                 
-                tbody.innerHTML += `
-                    <tr class="hover:bg-blue-50 cursor-pointer" onclick='showMonitoringDetails(${JSON.stringify(p).replace(/'/g, "\\'")})'>
-                        <td class="px-4 py-3">${p.date || ''} ${p.time || ''}</td>
-                        <td class="px-4 py-3">${p.location || ''}</td>
-                        <td class="px-4 py-3">${(p.ppv || 0).toFixed(2)}</td>
-                        <td class="px-4 py-3">${(p.pspl || 0).toFixed(1)}</td>
-                        <td class="px-4 py-3"><span class="px-2 py-1 ${statusClass} text-xs rounded-full">${p.status}</span></td>
-                    </tr>
-                `;
-            });
-        }
-
-        function showMonitoringDetails(p) {
-            alert(`Monitoring Point Details:\nLocation: ${p.location}\nDate: ${p.date} ${p.time}\nPPV: ${p.ppv.toFixed(2)} mm/s\nPSPL: ${p.pspl.toFixed(1)} dB\nDistance: ${p.distance}m\nCharge: ${p.charge}kg\nWeather: ${p.weather}\nRock Type: ${p.rock_type}`);
-        }
-
-        // ============================================
-        // CHART FUNCTIONS (simplified versions)
-        // ============================================
-        function createCharts() {
-            if (Object.values(charts).length) {
-                Object.values(charts).forEach(c => c?.destroy?.());
-            }
-            charts = {};
-            
-            createDeviationChart();
-            createComplianceChart();
-            createHoleStatusChart();
-            createPPVChart();
-            createPSPLChart();
-        }
-
-        function createDeviationChart() {
-            const ctx = document.getElementById('deviation-chart')?.getContext('2d');
-            if (!ctx) return;
-            
-            const deviations = holeData.map(h => parseFloat(h.properties.hole_deviation) || 0);
-            
-            if (deviations.length === 0) {
-                charts.deviationChart = new Chart(ctx, { type: 'bar', data: { labels: [], datasets: [] } });
-                return;
-            }
-            
-            const bins = { '0-0.2m': 0, '0.2-0.4m': 0, '>0.4m': 0 };
-            deviations.forEach(d => {
-                if (d <= 0.2) bins['0-0.2m']++;
-                else if (d <= 0.4) bins['0.2-0.4m']++;
-                else bins['>0.4m']++;
-            });
-            
-            charts.deviationChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(bins),
-                    datasets: [{
-                        label: 'Number of Holes',
-                        data: Object.values(bins),
-                        backgroundColor: ['#4ade80', '#fbbf24', '#ef4444']
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-            });
-        }
-
-        function createComplianceChart() {
-            const ctx = document.getElementById('compliance-chart')?.getContext('2d');
-            if (!ctx) return;
-            
-            const inSpec = holeData.filter(h => h.properties.in_spec_02).length;
-            const outSpec = holeData.length - inSpec;
-            
-            if (holeData.length === 0) {
-                charts.complianceChart = new Chart(ctx, { type: 'doughnut', data: { labels: [], datasets: [] } });
-                return;
-            }
-            
-            charts.complianceChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Within 0.2m Spec', 'Out of Spec'],
-                    datasets: [{ data: [inSpec, outSpec], backgroundColor: ['#4ade80', '#f87171'] }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, cutout: '70%' }
-            });
-        }
-
-        function createHoleStatusChart() {
-            const ctx = document.getElementById('hole-status-chart')?.getContext('2d');
-            if (!ctx) return;
-            
-            let exc = 0, warn = 0, crit = 0;
-            holeData.forEach(h => {
-                const d = parseFloat(h.properties.hole_deviation) || 0;
-                if (d <= 0.2) exc++;
-                else if (d <= 0.4) warn++;
-                else crit++;
-            });
-            
-            if (holeData.length === 0) {
-                charts.holeStatusChart = new Chart(ctx, { type: 'doughnut', data: { labels: [], datasets: [] } });
-                return;
-            }
-            
-            charts.holeStatusChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Excellent', 'Warning', 'Critical'],
-                    datasets: [{ data: [exc, warn, crit], backgroundColor: ['#4ade80', '#fbbf24', '#f87171'] }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, cutout: '70%' }
-            });
-        }
-
-        function createPPVChart() {
-            const ctx = document.getElementById('ppv-chart')?.getContext('2d');
-            if (!ctx) return;
-            
-            if (monitoringData.length === 0) {
-                charts.ppvChart = new Chart(ctx, { type: 'bar', data: { labels: [], datasets: [] } });
-                return;
-            }
-            
-            charts.ppvChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: monitoringData.map(m => m.properties.location),
-                    datasets: [{
-                        label: 'PPV (mm/s)',
-                        data: monitoringData.map(m => m.properties.ppv),
-                        backgroundColor: '#3b82f6'
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-            });
-        }
-
-        function createPSPLChart() {
-            const ctx = document.getElementById('pspl-chart')?.getContext('2d');
-            if (!ctx) return;
-            
-            if (monitoringData.length === 0) {
-                charts.psplChart = new Chart(ctx, { type: 'bar', data: { labels: [], datasets: [] } });
-                return;
-            }
-            
-            charts.psplChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: monitoringData.map(m => m.properties.location),
-                    datasets: [{
-                        label: 'PSPL (dB)',
-                        data: monitoringData.map(m => m.properties.pspl),
-                        backgroundColor: '#10b981'
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 80 } } }
-            });
-        }
-
-        function createVerticalDeviationChart() {
-            const container = document.getElementById('vertical-deviation-chart');
-            if (!container || !holeData.length) {
-                if (container) container.innerHTML = '<div class="text-center text-gray-500 py-8">No vertical deviation data</div>';
-                return;
-            }
-
-            const devData = holeData.map(h => ({
-                holeId: h.properties.hole_id || 'Unknown',
-                actual: parseFloat(h.properties.actual_elevation) || 0,
-                design: parseFloat(h.properties.design_elevation) || 0
-            })).sort((a, b) => String(a.holeId).localeCompare(String(b.holeId)));
-
-            charts.verticalDeviationChart = Highcharts.chart(container, {
-                chart: { type: 'line' },
-                title: { text: 'Hole Elevation Deviation' },
-                xAxis: { categories: devData.map(d => d.holeId), title: { text: 'Hole ID' } },
-                yAxis: { title: { text: 'Elevation (m)' } },
-                series: [
-                    { name: 'Actual', data: devData.map(d => d.actual), color: '#2563eb' },
-                    { name: 'Design', data: devData.map(d => d.design), color: '#ef4444' }
-                ]
-            });
-        }
-
-        function createHorizontalDeviationChart() {
-            const container = document.getElementById('horizontal-deviation-chart');
-            if (!container || !holeData.length) {
-                if (container) container.innerHTML = '<div class="text-center text-gray-500 py-8">No horizontal deviation data</div>';
-                return;
-            }
-
-            container.innerHTML = '';
-
-            const deviations = holeData.map(h => ({
-                dx: parseFloat(h.properties.dx) || 0,
-                dy: parseFloat(h.properties.dy) || 0,
-                inSpec: h.properties.in_spec_02
-            }));
-
-            document.getElementById('holes-within-0.2').textContent = holeData.filter(h => h.properties.in_spec_02).length;
-            document.getElementById('holes-within-0.4').textContent = holeData.filter(h => h.properties.in_spec_04).length;
-
-            const w = container.clientWidth, h = container.clientHeight;
-            const cx = w/2, cy = h/2;
-            const scale = Math.min(w, h)/2 * 0.8;
-
-            [0.2, 0.4].forEach((r, i) => {
-                const circle = document.createElement('div');
-                circle.className = 'deviation-circle';
-                circle.style.cssText = `left:${cx}px;top:${cy}px;width:${r*scale*2}px;height:${r*scale*2}px;border-color:${i===0?'#4ade80':'#fbbf24'}`;
-                container.appendChild(circle);
-            });
-
-            const target = document.createElement('div');
-            target.className = 'deviation-target';
-            target.style.cssText = `left:${cx}px;top:${cy}px`;
-            container.appendChild(target);
-
-            deviations.forEach(d => {
-                const point = document.createElement('div');
-                point.className = 'deviation-point';
-                point.style.cssText = `left:${cx + d.dx*scale}px;top:${cy + d.dy*scale}px;background:${d.inSpec?'#4ade80':'#ef4444'}`;
-                container.appendChild(point);
-            });
-        }
-
-        // ============================================
-        // UTILITY FUNCTIONS
-        // ============================================
-        function updateBlastInfo() {
-            if (holeData.length === 0) {
-                document.getElementById('total-holes').textContent = '0';
-                document.getElementById('in-spec').textContent = '0%';
-                document.getElementById('avg-deviation-summary').textContent = '0.00';
-                document.getElementById('max-deviation').textContent = '0.00';
-                return;
-            }
-            
-            const deviations = holeData.map(h => Math.abs(parseFloat(h.properties.actual_elevation) - parseFloat(h.properties.design_elevation)) || 0);
-            const avg = (deviations.reduce((a,b)=>a+b,0)/deviations.length).toFixed(2);
-            const max = Math.max(...deviations).toFixed(2);
-            const total = holeData.length;
-            const inSpec = holeData.filter(h => h.properties.in_spec_02).length;
-            
-            document.getElementById('total-holes').textContent = total;
-            document.getElementById('in-spec').textContent = Math.round((inSpec/total)*100) + '%';
-            document.getElementById('avg-deviation-summary').textContent = avg;
-            document.getElementById('max-deviation').textContent = max;
-            document.getElementById('holes-in-range-2').textContent = inSpec;
-            document.getElementById('percent-in-range-2').textContent = Math.round((inSpec/total)*100) + '%';
-        }
-
-        function setCurrentDate() {
-            const el = document.getElementById('current-date');
-            if (el) {
-                el.textContent = new Date().toLocaleDateString('en-US', { 
-                    year: 'numeric', month: 'short', day: 'numeric',
-                    hour: '2-digit', minute: '2-digit'
+                if (holeData.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-4 text-center text-gray-500">No data available</td></tr>';
+                    return;
+                }
+                
+                holeData.forEach(hole => {
+                    const p = hole.properties;
+                    const dev = parseFloat(p.hole_deviation) || 0;
+                    const status = dev <= 0.2 ? 'Excellent' : dev <= 0.4 ? 'Warning' : 'Critical';
+                    const statusClass = dev <= 0.2 ? 'bg-green-100 text-green-800' : dev <= 0.4 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
+                    
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-blue-50 cursor-pointer">
+                            <td class="px-4 py-3">${p.hole_id || ''}</td>
+                            <td class="px-4 py-3">${Number(p.actual_easting).toFixed(3)}</td>
+                            <td class="px-4 py-3">${Number(p.actual_northing).toFixed(3)}</td>
+                            <td class="px-4 py-3">${Number(p.actual_elevation).toFixed(3)}</td>
+                            <td class="px-4 py-3 ${dev > 0.4 ? 'text-red-600' : dev > 0.2 ? 'text-yellow-600' : 'text-green-600'}">${dev.toFixed(2)}</td>
+                            <td class="px-4 py-3"><span class="px-2 py-1 ${statusClass} text-xs rounded-full">${status}</span></td>
+                        </tr>
+                    `;
                 });
             }
-        }
 
-        function updateHeaderBlastInfo(text) {
-            const h1 = document.querySelector('header h1');
-            if (h1) h1.innerHTML = `<i class="fas fa-bomb mr-2"></i>Blast Data Monitoring Dashboard - ${text}`;
-        }
-
-        function calculateStatus(ppv, pspl, ppvLimit=2, psplLimit=117) {
-            if (ppv >= ppvLimit || pspl >= psplLimit) return 'Critical';
-            if (ppv >= ppvLimit*0.8 || pspl >= psplLimit*0.8) return 'Warning';
-            return 'Normal';
-        }
-
-        function showNotification(msg, type='info') {
-            console.log(`${type}: ${msg}`);
-        }
-
-        // ============================================
-        // FILTER FUNCTIONS
-        // ============================================
-        function filterHoleTable() {
-            const holeFilter = document.getElementById('hole-id-filter')?.value.toLowerCase();
-            const devFilter = document.getElementById('deviation-filter')?.value;
-            const statusFilter = document.getElementById('status-filter')?.value;
-            const rows = document.querySelectorAll('#hole-data-table tbody tr');
-            
-            rows.forEach(row => {
-                if (row.cells.length < 9) return;
-                const holeId = row.cells[0].textContent.toLowerCase();
-                const dev = parseFloat(row.cells[4].textContent);
-                const status = row.cells[5].textContent;
+            function populateMonitoringTable() {
+                const tbody = document.getElementById('monitoring-data-body');
+                if (!tbody) return;
                 
-                let show = true;
-                if (holeFilter && !holeId.includes(holeFilter)) show = false;
-                if (devFilter && dev) {
-                    if (devFilter === '0-0.2' && dev > 0.2) show = false;
-                    else if (devFilter === '0.2-0.4' && (dev < 0.2 || dev > 0.4)) show = false;
-                    else if (devFilter === '0.4+' && dev <= 0.4) show = false;
+                tbody.innerHTML = '';
+                
+                if (monitoringData.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center text-gray-500">No monitoring data</td></tr>';
+                    return;
                 }
-                if (statusFilter && status !== statusFilter) show = false;
-                row.style.display = show ? '' : 'none';
-            });
-        }
-
-        function filterMonitoringTable() {
-            const filter = document.getElementById('monitoring-filter')?.value;
-            const rows = document.querySelectorAll('#monitoring-data-table tbody tr');
-            
-            rows.forEach(row => {
-                const statusCell = row.cells[4];
-                if (statusCell) {
-                    const status = statusCell.textContent;
-                    row.style.display = !filter || status === filter ? '' : 'none';
-                }
-            });
-        }
-
-        function openTab(tabName) {
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-button').forEach(b => {
-                b.classList.remove('bg-blue-600', 'text-white');
-                b.classList.add('bg-gray-200');
-            });
-            
-            document.getElementById(tabName)?.classList.add('active');
-            const btn = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
-            if (btn) {
-                btn.classList.remove('bg-gray-200');
-                btn.classList.add('bg-blue-600', 'text-white');
+                
+                monitoringData.forEach(item => {
+                    const p = item.properties;
+                    const statusClass = p.status === 'Normal' ? 'bg-green-100 text-green-800' :
+                                       p.status === 'Warning' ? 'bg-yellow-100 text-yellow-800' :
+                                       'bg-red-100 text-red-800';
+                    
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-blue-50 cursor-pointer">
+                            <td class="px-4 py-3">${p.date || ''} ${p.time || ''}</td>
+                            <td class="px-4 py-3">${p.location || ''}</td>
+                            <td class="px-4 py-3">${(p.ppv || 0).toFixed(2)}</td>
+                            <td class="px-4 py-3">${(p.pspl || 0).toFixed(1)}</td>
+                            <td class="px-4 py-3"><span class="px-2 py-1 ${statusClass} text-xs rounded-full">${p.status}</span></td>
+                        </tr>
+                    `;
+                });
             }
-            
-            setTimeout(() => Object.values(charts).forEach(c => c?.resize?.()), 100);
-        }
 
-        function openSummaryTab(tabName) {
-            document.querySelectorAll('.summary-tab-content').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('#summary .summary-tab-button').forEach(b => {
-                b.classList.remove('bg-blue-600', 'text-white');
-                b.classList.add('bg-gray-200');
-            });
-            
-            document.getElementById(tabName)?.classList.add('active');
-            const btn = document.querySelector(`#summary .summary-tab-button[data-summary-tab="${tabName}"]`);
-            if (btn) {
-                btn.classList.remove('bg-gray-200');
-                btn.classList.add('bg-blue-600', 'text-white');
+            function updateBlastMonitoringCounts() {
+                const normal = monitoringData.filter(m => m.properties.status === 'Normal').length;
+                const warning = monitoringData.filter(m => m.properties.status === 'Warning').length;
+                const critical = monitoringData.filter(m => m.properties.status === 'Critical').length;
+                
+                document.getElementById('total-monitoring').textContent = monitoringData.length;
+                document.getElementById('normal-count').textContent = normal;
+                document.getElementById('warning-count').textContent = warning;
+                document.getElementById('critical-count').textContent = critical;
             }
-        }
 
-        function setupEventListeners() {
-            document.querySelectorAll('.tab-button').forEach(b => 
-                b.addEventListener('click', () => openTab(b.dataset.tab)));
-            
-            document.querySelectorAll('.summary-tab-button').forEach(b => 
-                b.addEventListener('click', () => openSummaryTab(b.dataset.summaryTab)));
-            
-            document.getElementById('data-source-selector')?.addEventListener('change', function() {
-                currentTable = this.value;
-                updateHeaderBlastInfo(this.options[this.selectedIndex].text);
-                loadHoleData();
-                loadMonitoringData();
-            });
-            
-            document.getElementById('refresh-btn')?.addEventListener('click', loadAllData);
-            
-            document.getElementById('use-date-selection')?.addEventListener('change', function() {
-                useDateSelection = this.checked;
-                const container = document.getElementById('hole-date-range-container');
-                const selector = document.getElementById('data-source-selector');
-                if (useDateSelection) {
-                    container?.classList.remove('hidden');
-                    selector.disabled = true;
-                    selector.classList.add('opacity-50');
-                } else {
-                    container?.classList.add('hidden');
-                    selector.disabled = false;
-                    selector.classList.remove('opacity-50');
+            // ============================================
+            // CHART FUNCTIONS
+            // ============================================
+            function createCharts() {
+                // Destroy existing charts
+                Object.values(charts).forEach(c => {
+                    if (c && typeof c.destroy === 'function') {
+                        c.destroy();
+                    }
+                });
+                charts = {};
+                
+                createDeviationChart();
+                createComplianceChart();
+                createHoleStatusChart();
+            }
+
+            function createDeviationChart() {
+                const ctx = document.getElementById('deviation-chart')?.getContext('2d');
+                if (!ctx) return;
+                
+                const deviations = holeData.map(h => parseFloat(h.properties.hole_deviation) || 0);
+                
+                if (deviations.length === 0) {
+                    charts.deviationChart = new Chart(ctx, { 
+                        type: 'bar', 
+                        data: { labels: [], datasets: [] },
+                        options: { responsive: true, maintainAspectRatio: false }
+                    });
+                    return;
                 }
-                loadHoleData();
-            });
-            
-            document.getElementById('apply-hole-dates')?.addEventListener('click', () => {
-                if (useDateSelection) loadHoleData();
-            });
-            
-            ['hole-date-from', 'hole-date-to'].forEach(id => {
-                document.getElementById(id)?.addEventListener('change', () => {
+                
+                const bins = { '0-0.2m': 0, '0.2-0.4m': 0, '>0.4m': 0 };
+                deviations.forEach(d => {
+                    if (d <= 0.2) bins['0-0.2m']++;
+                    else if (d <= 0.4) bins['0.2-0.4m']++;
+                    else bins['>0.4m']++;
+                });
+                
+                charts.deviationChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(bins),
+                        datasets: [{
+                            label: 'Number of Holes',
+                            data: Object.values(bins),
+                            backgroundColor: ['#4ade80', '#fbbf24', '#ef4444']
+                        }]
+                    },
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                    }
+                });
+            }
+
+            function createComplianceChart() {
+                const ctx = document.getElementById('compliance-chart')?.getContext('2d');
+                if (!ctx) return;
+                
+                const inSpec = holeData.filter(h => h.properties.in_spec_02).length;
+                const outSpec = holeData.length - inSpec;
+                
+                if (holeData.length === 0) {
+                    charts.complianceChart = new Chart(ctx, { 
+                        type: 'doughnut', 
+                        data: { labels: [], datasets: [] },
+                        options: { responsive: true, maintainAspectRatio: false }
+                    });
+                    return;
+                }
+                
+                charts.complianceChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Within 0.2m Spec', 'Out of Spec'],
+                        datasets: [{ data: [inSpec, outSpec], backgroundColor: ['#4ade80', '#f87171'] }]
+                    },
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false, 
+                        cutout: '70%',
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+
+            function createHoleStatusChart() {
+                const ctx = document.getElementById('hole-status-chart')?.getContext('2d');
+                if (!ctx) return;
+                
+                let exc = 0, warn = 0, crit = 0;
+                holeData.forEach(h => {
+                    const d = parseFloat(h.properties.hole_deviation) || 0;
+                    if (d <= 0.2) exc++;
+                    else if (d <= 0.4) warn++;
+                    else crit++;
+                });
+                
+                if (holeData.length === 0) {
+                    charts.holeStatusChart = new Chart(ctx, { 
+                        type: 'doughnut', 
+                        data: { labels: [], datasets: [] },
+                        options: { responsive: true, maintainAspectRatio: false }
+                    });
+                    return;
+                }
+                
+                charts.holeStatusChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Excellent', 'Warning', 'Critical'],
+                        datasets: [{ data: [exc, warn, crit], backgroundColor: ['#4ade80', '#fbbf24', '#f87171'] }]
+                    },
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false, 
+                        cutout: '70%',
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+
+            function createVerticalDeviationChart() {
+                // This would need a container element - you may want to add this
+                console.log('Vertical deviation chart placeholder');
+            }
+
+            function createHorizontalDeviationChart() {
+                const container = document.getElementById('horizontal-deviation-chart');
+                if (!container || !holeData.length) {
+                    if (container) container.innerHTML = '<div class="text-center text-gray-500 py-8">No horizontal deviation data</div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+
+                const deviations = holeData.map(h => ({
+                    dx: parseFloat(h.properties.dx) || 0,
+                    dy: parseFloat(h.properties.dy) || 0,
+                    inSpec: h.properties.in_spec_02
+                }));
+
+                document.getElementById('holes-within-0.2').textContent = holeData.filter(h => h.properties.in_spec_02).length;
+                document.getElementById('holes-within-0.4').textContent = holeData.filter(h => h.properties.in_spec_04).length;
+
+                const w = container.clientWidth || 300;
+                const h = container.clientHeight || 300;
+                const cx = w/2, cy = h/2;
+                const scale = Math.min(w, h)/2 * 0.8;
+
+                [0.2, 0.4].forEach((r, i) => {
+                    const circle = document.createElement('div');
+                    circle.className = 'deviation-circle';
+                    circle.style.cssText = `left:${cx}px;top:${cy}px;width:${r*scale*2}px;height:${r*scale*2}px;border-color:${i===0?'#4ade80':'#fbbf24'}`;
+                    container.appendChild(circle);
+                });
+
+                const target = document.createElement('div');
+                target.className = 'deviation-target';
+                target.style.cssText = `left:${cx}px;top:${cy}px`;
+                container.appendChild(target);
+
+                deviations.forEach(d => {
+                    const point = document.createElement('div');
+                    point.className = 'deviation-point';
+                    point.style.cssText = `left:${cx + d.dx*scale}px;top:${cy + d.dy*scale}px;background:${d.inSpec?'#4ade80':'#ef4444'}`;
+                    container.appendChild(point);
+                });
+            }
+
+            // ============================================
+            // UTILITY FUNCTIONS
+            // ============================================
+            function updateBlastInfo() {
+                if (holeData.length === 0) {
+                    document.getElementById('total-holes').textContent = '0';
+                    document.getElementById('in-spec').textContent = '0%';
+                    document.getElementById('avg-deviation-summary').textContent = '0.00';
+                    document.getElementById('max-deviation').textContent = '0.00';
+                    return;
+                }
+                
+                const deviations = holeData.map(h => Math.abs(parseFloat(h.properties.hole_deviation) || 0));
+                const avg = (deviations.reduce((a,b)=>a+b,0)/deviations.length).toFixed(2);
+                const max = Math.max(...deviations).toFixed(2);
+                const total = holeData.length;
+                const inSpec = holeData.filter(h => h.properties.in_spec_02).length;
+                
+                document.getElementById('total-holes').textContent = total;
+                document.getElementById('in-spec').textContent = Math.round((inSpec/total)*100) + '%';
+                document.getElementById('avg-deviation-summary').textContent = avg;
+                document.getElementById('max-deviation').textContent = max;
+                document.getElementById('holes-within-0.2').textContent = inSpec;
+                document.getElementById('holes-within-0.4').textContent = holeData.filter(h => h.properties.in_spec_04).length;
+            }
+
+            function setCurrentDate() {
+                const el = document.getElementById('current-date');
+                if (el) {
+                    el.textContent = new Date().toLocaleDateString('en-US', { 
+                        year: 'numeric', month: 'short', day: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                    });
+                }
+            }
+
+            function updateHeaderBlastInfo(text) {
+                const h1 = document.querySelector('header h1');
+                if (h1) h1.innerHTML = `<i class="fas fa-bomb mr-2"></i>Blast Data Monitoring Dashboard - ${text}`;
+            }
+
+            function calculateStatus(ppv, pspl, ppvLimit=2, psplLimit=117) {
+                if (ppv >= ppvLimit || pspl >= psplLimit) return 'Critical';
+                if (ppv >= ppvLimit*0.8 || pspl >= psplLimit*0.8) return 'Warning';
+                return 'Normal';
+            }
+
+            function filterHoleTable() {
+                const holeFilter = document.getElementById('hole-id-filter')?.value.toLowerCase();
+                const devFilter = document.getElementById('deviation-filter')?.value;
+                const statusFilter = document.getElementById('status-filter')?.value;
+                const rows = document.querySelectorAll('#hole-data-table tbody tr');
+                
+                rows.forEach(row => {
+                    if (row.cells.length < 6) return;
+                    const holeId = row.cells[0]?.textContent.toLowerCase() || '';
+                    const dev = parseFloat(row.cells[4]?.textContent) || 0;
+                    const status = row.cells[5]?.textContent || '';
+                    
+                    let show = true;
+                    if (holeFilter && !holeId.includes(holeFilter)) show = false;
+                    if (devFilter && dev) {
+                        if (devFilter === '0-0.2' && dev > 0.2) show = false;
+                        else if (devFilter === '0.2-0.4' && (dev < 0.2 || dev > 0.4)) show = false;
+                        else if (devFilter === '0.4+' && dev <= 0.4) show = false;
+                    }
+                    if (statusFilter && status !== statusFilter) show = false;
+                    row.style.display = show ? '' : 'none';
+                });
+            }
+
+            function filterMonitoringTable() {
+                const filter = document.getElementById('monitoring-filter')?.value;
+                const rows = document.querySelectorAll('#monitoring-data-table tbody tr');
+                
+                rows.forEach(row => {
+                    const statusCell = row.cells[4];
+                    if (statusCell) {
+                        const status = statusCell.textContent;
+                        row.style.display = !filter || status === filter ? '' : 'none';
+                    }
+                });
+            }
+
+            // Make functions available globally for onclick handlers
+            window.openTab = function(tabName) {
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-button').forEach(b => {
+                    b.classList.remove('bg-blue-600', 'text-white');
+                    b.classList.add('bg-gray-200');
+                });
+                
+                document.getElementById(tabName)?.classList.add('active');
+                const btn = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
+                if (btn) {
+                    btn.classList.remove('bg-gray-200');
+                    btn.classList.add('bg-blue-600', 'text-white');
+                }
+                
+                setTimeout(() => Object.values(charts).forEach(c => c?.resize?.()), 100);
+            };
+
+            window.openSummaryTab = function(tabName) {
+                document.querySelectorAll('.summary-tab-content').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('#summary .summary-tab-button').forEach(b => {
+                    b.classList.remove('bg-blue-600', 'text-white');
+                    b.classList.add('bg-gray-200');
+                });
+                
+                document.getElementById(tabName)?.classList.add('active');
+                const btn = document.querySelector(`.summary-tab-button[data-summary-tab="${tabName}"]`);
+                if (btn) {
+                    btn.classList.remove('bg-gray-200');
+                    btn.classList.add('bg-blue-600', 'text-white');
+                }
+            };
+
+            function setupEventListeners() {
+                document.getElementById('data-source-selector')?.addEventListener('change', function() {
+                    currentTable = this.value;
+                    updateHeaderBlastInfo(this.options[this.selectedIndex].text);
+                    loadHoleData();
+                    loadMonitoringData();
+                });
+                
+                document.getElementById('refresh-btn')?.addEventListener('click', loadAllData);
+                
+                document.getElementById('use-date-selection')?.addEventListener('change', function() {
+                    useDateSelection = this.checked;
+                    const container = document.getElementById('hole-date-range-container');
+                    const selector = document.getElementById('data-source-selector');
+                    if (useDateSelection) {
+                        container?.classList.remove('hidden');
+                        selector.disabled = true;
+                        selector.classList.add('opacity-50');
+                    } else {
+                        container?.classList.add('hidden');
+                        selector.disabled = false;
+                        selector.classList.remove('opacity-50');
+                    }
+                    loadHoleData();
+                });
+                
+                document.getElementById('apply-hole-dates')?.addEventListener('click', () => {
                     if (useDateSelection) loadHoleData();
                 });
-            });
-            
-            document.getElementById('hole-id-filter')?.addEventListener('keyup', filterHoleTable);
-            document.getElementById('deviation-filter')?.addEventListener('change', filterHoleTable);
-            document.getElementById('status-filter')?.addEventListener('change', filterHoleTable);
-            document.getElementById('monitoring-filter')?.addEventListener('change', filterMonitoringTable);
-            
-            setTimeout(() => {
-                document.getElementById('fit-all-btn')?.addEventListener('click', fitAllData);
-                document.getElementById('geolocate-btn')?.addEventListener('click', locateUser);
-            }, 100);
-        }
-
-        function locateUser() {
-            if (!navigator.geolocation) {
-                alert('Geolocation not supported');
-                return;
+                
+                ['hole-date-from', 'hole-date-to'].forEach(id => {
+                    document.getElementById(id)?.addEventListener('change', () => {
+                        if (useDateSelection) loadHoleData();
+                    });
+                });
+                
+                document.getElementById('hole-id-filter')?.addEventListener('keyup', filterHoleTable);
+                document.getElementById('deviation-filter')?.addEventListener('change', filterHoleTable);
+                document.getElementById('status-filter')?.addEventListener('change', filterHoleTable);
+                document.getElementById('monitoring-filter')?.addEventListener('change', filterMonitoringTable);
+                
+                setTimeout(() => {
+                    document.getElementById('fit-all-btn')?.addEventListener('click', fitAllData);
+                    document.getElementById('geolocate-btn')?.addEventListener('click', locateUser);
+                }, 100);
             }
-            navigator.geolocation.getCurrentPosition(pos => {
-                map.flyTo([pos.coords.latitude, pos.coords.longitude], 10);
-                L.marker([pos.coords.latitude, pos.coords.longitude], {
-                    icon: L.divIcon({ className: 'user-location-marker', html: '<i class="fas fa-user text-blue-600 text-xl"></i>', iconSize: [24,24] })
-                }).addTo(map).bindPopup('Your Location').openPopup();
-            });
-        }
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', initializeDashboard);
+            function locateUser() {
+                if (!navigator.geolocation) {
+                    alert('Geolocation not supported');
+                    return;
+                }
+                navigator.geolocation.getCurrentPosition(pos => {
+                    map.flyTo([pos.coords.latitude, pos.coords.longitude], 10);
+                    L.marker([pos.coords.latitude, pos.coords.longitude], {
+                        icon: L.divIcon({ className: 'user-location-marker', html: '<i class="fas fa-user text-blue-600 text-xl"></i>', iconSize: [24,24] })
+                    }).addTo(map).bindPopup('Your Location').openPopup();
+                });
+            }
+
+            // Initialize when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initializeDashboard);
+            } else {
+                initializeDashboard();
+            }
+        })();
     </script>
 </body>
 </html>
