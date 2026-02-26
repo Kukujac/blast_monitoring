@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Blast Data Monitoring Dashboard</title>
 
-    <!-- Tailwind CSS - This warning is normal and can be ignored during development -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Font Awesome -->
@@ -28,7 +28,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
-        /* Your existing styles */
+        /* Your existing styles - keep them exactly as they are */
         #vertical-deviation-chart { position: relative; height: 400px; width: 100%; border-left: 1px solid #ccc; border-right: 1px solid #ccc; }
         .deviation-bar { position: absolute; width: 8px; background: #3388ff; transform: translateX(-50%); }
         .deviation-line { position: absolute; width: 1px; transform: translateX(-50%); }
@@ -75,7 +75,7 @@
     </style>
 </head>
 <body class="bg-gray-50">
-    <!-- Header -->
+    <!-- Header - Keep your existing header HTML exactly as is -->
     <header class="bg-gradient-to-r from-blue-700 to-blue-900 text-white p-4 shadow-lg">
         <div class="container mx-auto flex flex-col md:flex-row justify-between items-center">
             <div class="flex items-center mb-4 md:mb-0">
@@ -87,7 +87,7 @@
             </div>
             
             <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4 w-full md:w-auto">
-                <!-- Data Source Selector -->
+                <!-- Data Source Selector - UPDATED with table names -->
                 <div class="relative data-source-selector w-full sm:w-64">
                     <select id="data-source-selector" class="w-full pl-4 pr-10 py-2 rounded-lg cursor-pointer">
                         <option value="hole_data">1190-1185 BN# 8</option>
@@ -135,13 +135,13 @@
         <div class="data-panel w-full lg:w-1/3 bg-white rounded-xl shadow-xl p-4">
             <!-- Tabs -->
             <div class="flex border-b mb-4">
-                <button class="tab-button flex-1 py-2 px-3 text-sm font-medium transition-colors bg-blue-600 text-white" data-tab="hole-data-tab" onclick="openTab('hole-data-tab')">
+                <button class="tab-button flex-1 py-2 px-3 text-sm font-medium transition-colors bg-blue-600 text-white" data-tab="hole-data-tab">
                     <i class="fas fa-database mr-1"></i> Hole Data
                 </button>
-                <button class="tab-button flex-1 py-2 px-3 text-sm font-medium transition-colors bg-gray-200" data-tab="monitoring-tab" onclick="openTab('monitoring-tab')">
+                <button class="tab-button flex-1 py-2 px-3 text-sm font-medium transition-colors bg-gray-200" data-tab="monitoring-tab">
                     <i class="fas fa-chart-line mr-1"></i> Monitoring
                 </button>
-                <button class="tab-button flex-1 py-2 px-3 text-sm font-medium transition-colors bg-gray-200" data-tab="summary-tab" onclick="openTab('summary-tab')">
+                <button class="tab-button flex-1 py-2 px-3 text-sm font-medium transition-colors bg-gray-200" data-tab="summary-tab">
                     <i class="fas fa-chart-pie mr-1"></i> Summary
                 </button>
             </div>
@@ -216,13 +216,13 @@
             <div id="summary-tab" class="tab-content">
                 <!-- Summary Tabs -->
                 <div class="flex border-b mb-3">
-                    <button class="summary-tab-button flex-1 py-1 px-2 text-xs font-medium transition-colors bg-blue-600 text-white" data-summary-tab="hole-summary" onclick="openSummaryTab('hole-summary')">
+                    <button class="summary-tab-button flex-1 py-1 px-2 text-xs font-medium transition-colors bg-blue-600 text-white" data-summary-tab="hole-summary">
                         Hole Summary
                     </button>
-                    <button class="summary-tab-button flex-1 py-1 px-2 text-xs font-medium transition-colors bg-gray-200" data-summary-tab="blast-summary" onclick="openSummaryTab('blast-summary')">
+                    <button class="summary-tab-button flex-1 py-1 px-2 text-xs font-medium transition-colors bg-gray-200" data-summary-tab="blast-summary">
                         Blast Summary
                     </button>
-                    <button class="summary-tab-button flex-1 py-1 px-2 text-xs font-medium transition-colors bg-gray-200" data-summary-tab="charts-summary" onclick="openSummaryTab('charts-summary')">
+                    <button class="summary-tab-button flex-1 py-1 px-2 text-xs font-medium transition-colors bg-gray-200" data-summary-tab="charts-summary">
                         Charts
                     </button>
                 </div>
@@ -309,30 +309,30 @@
     
     <!-- Dashboard JavaScript -->
     <script>
-        // Wrap everything in an IIFE to avoid global scope pollution
-        (function() {
+        // Use a unique namespace to avoid conflicts
+        var BlastDashboard = (function() {
             // ============================================
             // SUPABASE CONFIGURATION
             // ============================================
-            const SUPABASE_URL = 'https://aahrwtlmemaqacubievh.supabase.co';
-            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaHJ3dGxtZW1hcWFjdWJpZXZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3ODg5MTgsImV4cCI6MjA4NjM2NDkxOH0.sCQwcgEtEh4VMcIswpF2xA7bHfnc2OiB911YAwZuzvc';
+            var SUPABASE_URL = 'https://aahrwtlmemaqacubievh.supabase.co';
+            var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhaHJ3dGxtZW1hcWFjdWJpZXZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3ODg5MTgsImV4cCI6MjA4NjM2NDkxOH0.sCQwcgEtEh4VMcIswpF2xA7bHfnc2OiB911YAwZuzvc';
             
-            // Initialize Supabase client
-            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            // Initialize Supabase client - store in a variable that won't conflict
+            var supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
             // ============================================
             // GLOBAL VARIABLES
             // ============================================
-            let holeData = [];
-            let monitoringData = [];
-            let charts = {};
-            const DESIGN_ELEVATION = 1185;
-            let currentTable = 'hole_data';
-            let useDateSelection = false;
+            var holeData = [];
+            var monitoringData = [];
+            var charts = {};
+            var DESIGN_ELEVATION = 1185;
+            var currentTable = 'hole_data';
+            var useDateSelection = false;
             
             // Layer groups
-            let actualLayer, designLayer, plannedLayer, monitoringLayer, pitLayer;
-            let map;
+            var actualLayer, designLayer, plannedLayer, monitoringLayer, pitLayer;
+            var map;
 
             // ============================================
             // INITIALIZATION
@@ -341,18 +341,20 @@
                 initMap();
                 setCurrentDate();
                 
-                const today = new Date();
-                const thirtyDaysAgo = new Date();
+                var today = new Date();
+                var thirtyDaysAgo = new Date();
                 thirtyDaysAgo.setDate(today.getDate() - 30);
                 
-                document.getElementById('hole-date-from').value = thirtyDaysAgo.toISOString().split('T')[0];
-                document.getElementById('hole-date-to').value = today.toISOString().split('T')[0];
+                var dateFrom = document.getElementById('hole-date-from');
+                var dateTo = document.getElementById('hole-date-to');
+                if (dateFrom) dateFrom.value = thirtyDaysAgo.toISOString().split('T')[0];
+                if (dateTo) dateTo.value = today.toISOString().split('T')[0];
                 
                 setupEventListeners();
                 
-                const selector = document.getElementById('data-source-selector');
+                var selector = document.getElementById('data-source-selector');
                 if (selector) {
-                    const selectedOption = selector.options[selector.selectedIndex].text;
+                    var selectedOption = selector.options[selector.selectedIndex].text;
                     updateHeaderBlastInfo(selectedOption);
                     currentTable = selector.value;
                 }
@@ -371,7 +373,7 @@
                 
                 L.control.zoom({ position: 'topleft' }).addTo(map);
                 
-                const baseMaps = {
+                var baseMaps = {
                     "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         maxZoom: 23,
                         attribution: '&copy; OpenStreetMap'
@@ -390,7 +392,7 @@
                 monitoringLayer = L.layerGroup();
                 pitLayer = L.layerGroup();
                 
-                const overlayMaps = {
+                var overlayMaps = {
                     "Actual Positions": actualLayer,
                     "Design Positions": designLayer,
                     "Planned Positions": plannedLayer,
@@ -413,9 +415,9 @@
             }
 
             function addMapControls() {
-                const mapControls = L.control({position: 'topleft'});
+                var mapControls = L.control({position: 'topleft'});
                 mapControls.onAdd = function() {
-                    const div = L.DomUtil.create('div', 'map-controls bg-white p-3 rounded shadow');
+                    var div = L.DomUtil.create('div', 'map-controls bg-white p-3 rounded shadow');
                     div.innerHTML = `
                         <h3 class="text-sm font-bold mb-2">Map Controls</h3>
                         <button id="fit-all-btn" class="w-full bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs p-2 rounded mb-2">
@@ -432,9 +434,9 @@
             }
 
             function addLegend() {
-                const legend = L.control({position: 'bottomright'});
+                var legend = L.control({position: 'bottomright'});
                 legend.onAdd = function() {
-                    const div = L.DomUtil.create('div', 'legend bg-white p-3 rounded shadow text-sm');
+                    var div = L.DomUtil.create('div', 'legend bg-white p-3 rounded shadow text-sm');
                     div.innerHTML = `
                         <h4 class="font-bold mb-2">Legend</h4>
                         <div class="flex items-center mb-1"><i class="w-4 h-4 bg-blue-600 rounded-full mr-2"></i> Actual Position</div>
@@ -451,174 +453,187 @@
             // ============================================
             // DATA LOADING FUNCTIONS
             // ============================================
-            async function loadAllData() {
-                await Promise.all([
+            function loadAllData() {
+                Promise.all([
                     loadHoleData(),
                     loadMonitoringData(),
                     loadPitData()
-                ]);
+                ]).catch(function(error) {
+                    console.error('Error loading data:', error);
+                });
             }
 
-            async function loadHoleData() {
-                try {
-                    let query = supabase
-                        .from(currentTable)
-                        .select(`
-                            hole_id,
-                            actual_elevation,
-                            actual_easting,
-                            actual_northing,
-                            design_elevation,
-                            planned_elevation,
-                            dx, dy, dz,
-                            hole_deviation,
-                            in_spec_02,
-                            in_spec_04,
-                            blast_date,
-                            geom_actual,
-                            geom_design,
-                            geom_planned
-                        `);
+            function loadHoleData() {
+                var query = supabaseClient
+                    .from(currentTable)
+                    .select(`
+                        hole_id,
+                        actual_elevation,
+                        actual_easting,
+                        actual_northing,
+                        design_elevation,
+                        planned_elevation,
+                        dx, dy, dz,
+                        hole_deviation,
+                        in_spec_02,
+                        in_spec_04,
+                        blast_date,
+                        geom_actual,
+                        geom_design,
+                        geom_planned
+                    `);
+                
+                if (useDateSelection) {
+                    var dateFrom = document.getElementById('hole-date-from').value;
+                    var dateTo = document.getElementById('hole-date-to').value;
+                    if (dateFrom) query = query.gte('blast_date', dateFrom);
+                    if (dateTo) query = query.lte('blast_date', dateTo);
+                }
+                
+                return query.then(function(result) {
+                    var data = result.data;
+                    var error = result.error;
                     
-                    if (useDateSelection) {
-                        const dateFrom = document.getElementById('hole-date-from').value;
-                        const dateTo = document.getElementById('hole-date-to').value;
-                        if (dateFrom) query = query.gte('blast_date', dateFrom);
-                        if (dateTo) query = query.lte('blast_date', dateTo);
-                    }
-                    
-                    const { data, error } = await query;
                     if (error) throw error;
                     
                     holeData = (data || [])
-                        .filter(row => {
-                            const dev = parseFloat(row.hole_deviation) || 0;
-                            const actEl = parseFloat(row.actual_elevation) || 0;
-                            const desEl = parseFloat(row.design_elevation) || 0;
+                        .filter(function(row) {
+                            var dev = parseFloat(row.hole_deviation) || 0;
+                            var actEl = parseFloat(row.actual_elevation) || 0;
+                            var desEl = parseFloat(row.design_elevation) || 0;
                             return dev > 0 && actEl > 0 && desEl > 0;
                         })
-                        .map(row => ({
-                            type: "Feature",
-                            properties: {
-                                hole_id: row.hole_id,
-                                actual_elevation: row.actual_elevation,
-                                actual_northing: row.actual_northing,
-                                actual_easting: row.actual_easting,
-                                design_elevation: row.design_elevation,
-                                planned_elevation: row.planned_elevation,
-                                dx: row.dx, dy: row.dy, dz: row.dz,
-                                hole_deviation: row.hole_deviation,
-                                in_spec_02: row.in_spec_02,
-                                in_spec_04: row.in_spec_04,
-                                blast_date: row.blast_date
-                            },
-                            geometry_actual: row.geom_actual || null,
-                            geometry_design: row.geom_design || null,
-                            geometry_planned: row.geom_planned || null
-                        }));
+                        .map(function(row) {
+                            return {
+                                type: "Feature",
+                                properties: {
+                                    hole_id: row.hole_id,
+                                    actual_elevation: row.actual_elevation,
+                                    actual_northing: row.actual_northing,
+                                    actual_easting: row.actual_easting,
+                                    design_elevation: row.design_elevation,
+                                    planned_elevation: row.planned_elevation,
+                                    dx: row.dx, dy: row.dy, dz: row.dz,
+                                    hole_deviation: row.hole_deviation,
+                                    in_spec_02: row.in_spec_02,
+                                    in_spec_04: row.in_spec_04,
+                                    blast_date: row.blast_date
+                                },
+                                geometry_actual: row.geom_actual || null,
+                                geometry_design: row.geom_design || null,
+                                geometry_planned: row.geom_planned || null
+                            };
+                        });
                     
-                    console.log(`Loaded ${holeData.length} holes from ${currentTable}`);
+                    console.log('Loaded ' + holeData.length + ' holes from ' + currentTable);
                     populateHoleTable();
                     plotHoleData();
                     createCharts();
-                    createVerticalDeviationChart();
                     createHorizontalDeviationChart();
                     updateBlastInfo();
                     
-                } catch (error) {
+                }).catch(function(error) {
                     console.error('Error loading hole data:', error);
                     holeData = [];
                     populateHoleTable();
-                }
+                });
             }
 
-            async function loadMonitoringData() {
-                try {
-                    const { data, error } = await supabase
-                        .from('blasting_monitoring')
-                        .select(`
-                            id, record_id, blast_date, blast_time, pit_location,
-                            monitoring_point, shot_number, ppv_actual, pspl_actual,
-                            distance_m, weather_conditions, rock_type, cooperate_charge_kg,
-                            burden, spacing, drill_depth, holes_design, holes_actual,
-                            actual_volume, planned_volume, geom
-                        `)
-                        .order('blast_date', { ascending: false });
-                    
-                    if (error) throw error;
-                    
-                    let blastPattern = '1190-1185 BN# 8';
-                    if (currentTable === 'hole_data_2') blastPattern = '1185-1180 BN# 2';
-                    else if (currentTable === 'hole_data_1b') blastPattern = '1185-1180 BN# 1b';
-                    
-                    monitoringData = (data || []).map(row => ({
-                        type: "Feature",
-                        geometry: row.geom || null,
-                        properties: {
-                            id: row.id, date: row.blast_date, time: row.blast_time,
-                            location: row.monitoring_point, pit_location: row.pit_location,
-                            shot_number: row.shot_number, ppv: row.ppv_actual || 0,
-                            pspl: row.pspl_actual || 0, distance: row.distance_m || 0,
-                            weather: row.weather_conditions || 'Unknown',
-                            rock_type: row.rock_type || 'Unknown',
-                            charge: row.cooperate_charge_kg || 0,
-                            burden: row.burden || 0, spacing: row.spacing || 0,
-                            drill_depth: row.drill_depth || 0,
-                            holes_design: row.holes_design || 0,
-                            holes_actual: row.holes_actual || 0,
-                            volume_actual: row.actual_volume || 0,
-                            volume_planned: row.planned_volume || 0,
-                            status: calculateStatus(row.ppv_actual || 0, row.pspl_actual || 0),
-                            blast_pattern: blastPattern
-                        }
-                    }));
-                    
-                    console.log(`Loaded ${monitoringData.length} monitoring records`);
-                    populateMonitoringTable();
-                    plotMonitoringData();
-                    updateBlastMonitoringCounts();
-                    
-                } catch (error) {
-                    console.error('Error loading monitoring data:', error);
-                    monitoringData = [];
-                    populateMonitoringTable();
-                }
+            function loadMonitoringData() {
+                return supabaseClient
+                    .from('blasting_monitoring')
+                    .select(`
+                        id, record_id, blast_date, blast_time, pit_location,
+                        monitoring_point, shot_number, ppv_actual, pspl_actual,
+                        distance_m, weather_conditions, rock_type, cooperate_charge_kg,
+                        burden, spacing, drill_depth, holes_design, holes_actual,
+                        actual_volume, planned_volume, geom
+                    `)
+                    .order('blast_date', { ascending: false })
+                    .then(function(result) {
+                        var data = result.data;
+                        var error = result.error;
+                        
+                        if (error) throw error;
+                        
+                        var blastPattern = '1190-1185 BN# 8';
+                        if (currentTable === 'hole_data_2') blastPattern = '1185-1180 BN# 2';
+                        else if (currentTable === 'hole_data_1b') blastPattern = '1185-1180 BN# 1b';
+                        
+                        monitoringData = (data || []).map(function(row) {
+                            return {
+                                type: "Feature",
+                                geometry: row.geom || null,
+                                properties: {
+                                    id: row.id, date: row.blast_date, time: row.blast_time,
+                                    location: row.monitoring_point, pit_location: row.pit_location,
+                                    shot_number: row.shot_number, ppv: row.ppv_actual || 0,
+                                    pspl: row.pspl_actual || 0, distance: row.distance_m || 0,
+                                    weather: row.weather_conditions || 'Unknown',
+                                    rock_type: row.rock_type || 'Unknown',
+                                    charge: row.cooperate_charge_kg || 0,
+                                    burden: row.burden || 0, spacing: row.spacing || 0,
+                                    drill_depth: row.drill_depth || 0,
+                                    holes_design: row.holes_design || 0,
+                                    holes_actual: row.holes_actual || 0,
+                                    volume_actual: row.actual_volume || 0,
+                                    volume_planned: row.planned_volume || 0,
+                                    status: calculateStatus(row.ppv_actual || 0, row.pspl_actual || 0),
+                                    blast_pattern: blastPattern
+                                }
+                            };
+                        });
+                        
+                        console.log('Loaded ' + monitoringData.length + ' monitoring records');
+                        populateMonitoringTable();
+                        plotMonitoringData();
+                        updateBlastMonitoringCounts();
+                        
+                    }).catch(function(error) {
+                        console.error('Error loading monitoring data:', error);
+                        monitoringData = [];
+                        populateMonitoringTable();
+                    });
             }
 
-            async function loadPitData() {
-                try {
-                    const { data, error } = await supabase
-                        .from('pit_boundaries')
-                        .select('name, geom');
-                    
-                    if (error) throw error;
-                    
-                    pitLayer.clearLayers();
-                    
-                    const features = (data || []).map(row => ({
-                        type: "Feature",
-                        geometry: row.geom,
-                        properties: { name: row.name }
-                    }));
-                    
-                    L.geoJSON(features, {
-                        style: {
-                            color: '#555', weight: 2, fillColor: '#888',
-                            fillOpacity: 0.5, dashArray: '5, 5'
-                        },
-                        onEachFeature: (feature, layer) => {
-                            if (feature.properties.name) {
-                                layer.bindPopup(`<b>${feature.properties.name}</b>`);
+            function loadPitData() {
+                return supabaseClient
+                    .from('pit_boundaries')
+                    .select('name, geom')
+                    .then(function(result) {
+                        var data = result.data;
+                        var error = result.error;
+                        
+                        if (error) throw error;
+                        
+                        if (pitLayer) pitLayer.clearLayers();
+                        
+                        var features = (data || []).map(function(row) {
+                            return {
+                                type: "Feature",
+                                geometry: row.geom,
+                                properties: { name: row.name }
+                            };
+                        });
+                        
+                        L.geoJSON(features, {
+                            style: {
+                                color: '#555', weight: 2, fillColor: '#888',
+                                fillOpacity: 0.5, dashArray: '5, 5'
+                            },
+                            onEachFeature: function(feature, layer) {
+                                if (feature.properties.name) {
+                                    layer.bindPopup('<b>' + feature.properties.name + '</b>');
+                                }
                             }
-                        }
-                    }).addTo(pitLayer);
-                    
-                    pitLayer.addTo(map);
-                    console.log(`Loaded ${features.length} pit boundaries`);
-                    
-                } catch (error) {
-                    console.error('Error loading pit data:', error);
-                }
+                        }).addTo(pitLayer);
+                        
+                        if (pitLayer) pitLayer.addTo(map);
+                        console.log('Loaded ' + features.length + ' pit boundaries');
+                        
+                    }).catch(function(error) {
+                        console.error('Error loading pit data:', error);
+                    });
             }
 
             // ============================================
@@ -628,19 +643,19 @@
                 if (!actualLayer) return;
                 
                 actualLayer.clearLayers();
-                designLayer.clearLayers();
-                plannedLayer.clearLayers();
+                if (designLayer) designLayer.clearLayers();
+                if (plannedLayer) plannedLayer.clearLayers();
                 
-                const actualMarkers = [];
+                var actualMarkers = [];
                 
-                holeData.forEach(feature => {
-                    const props = feature.properties;
-                    const deviation = parseFloat(props.hole_deviation) || 0;
+                holeData.forEach(function(feature) {
+                    var props = feature.properties;
+                    var deviation = parseFloat(props.hole_deviation) || 0;
                     
                     if (feature.geometry_actual) {
                         try {
-                            const marker = L.geoJSON(feature.geometry_actual, {
-                                pointToLayer: (geoJsonPoint, latlng) => {
+                            var marker = L.geoJSON(feature.geometry_actual, {
+                                pointToLayer: function(geoJsonPoint, latlng) {
                                     return L.circleMarker(latlng, {
                                         color: '#3333ff',
                                         fillColor: deviation > 0.4 ? '#ff3333' : deviation > 0.2 ? '#ffcc00' : '#33ff33',
@@ -663,18 +678,20 @@
                     }
                 });
                 
-                const actualCluster = L.markerClusterGroup({
-                    chunkedLoading: true,
-                    maxClusterRadius: 50,
-                    spiderfyOnMaxZoom: true,
-                    showCoverageOnHover: true
-                });
-                
-                actualMarkers.forEach(m => actualCluster.addLayer(m));
-                actualLayer.addLayer(actualCluster);
-                actualLayer.addTo(map);
-                
-                if (actualMarkers.length > 0) setTimeout(fitAllData, 500);
+                if (actualMarkers.length > 0) {
+                    var actualCluster = L.markerClusterGroup({
+                        chunkedLoading: true,
+                        maxClusterRadius: 50,
+                        spiderfyOnMaxZoom: true,
+                        showCoverageOnHover: true
+                    });
+                    
+                    actualMarkers.forEach(function(m) { actualCluster.addLayer(m); });
+                    actualLayer.addLayer(actualCluster);
+                    actualLayer.addTo(map);
+                    
+                    setTimeout(fitAllData, 500);
+                }
             }
 
             function plotMonitoringData() {
@@ -682,13 +699,13 @@
                 
                 monitoringLayer.clearLayers();
                 
-                monitoringData.forEach(item => {
+                monitoringData.forEach(function(item) {
                     if (!item.geometry) return;
                     
                     try {
-                        const marker = L.geoJSON(item.geometry, {
-                            pointToLayer: (geoJsonPoint, latlng) => {
-                                let color = '#66bb6a';
+                        var marker = L.geoJSON(item.geometry, {
+                            pointToLayer: function(geoJsonPoint, latlng) {
+                                var color = '#66bb6a';
                                 if (item.properties.status === 'Warning') color = '#ffcc00';
                                 if (item.properties.status === 'Critical') color = '#ff4444';
                                 
@@ -718,13 +735,13 @@
             function fitAllData() {
                 if (!map) return;
                 
-                const bounds = L.latLngBounds();
-                let hasData = false;
+                var bounds = L.latLngBounds();
+                var hasData = false;
 
-                [actualLayer, monitoringLayer, pitLayer].forEach(layer => {
+                [actualLayer, monitoringLayer, pitLayer].forEach(function(layer) {
                     if (layer && layer.getLayers().length > 0) {
                         try {
-                            const layerBounds = layer.getBounds();
+                            var layerBounds = layer.getBounds();
                             if (layerBounds.isValid()) {
                                 bounds.extend(layerBounds);
                                 hasData = true;
@@ -744,7 +761,7 @@
             // TABLE POPULATION FUNCTIONS
             // ============================================
             function populateHoleTable() {
-                const tbody = document.getElementById('hole-data-body');
+                var tbody = document.getElementById('hole-data-body');
                 if (!tbody) return;
                 
                 tbody.innerHTML = '';
@@ -754,11 +771,11 @@
                     return;
                 }
                 
-                holeData.forEach(hole => {
-                    const p = hole.properties;
-                    const dev = parseFloat(p.hole_deviation) || 0;
-                    const status = dev <= 0.2 ? 'Excellent' : dev <= 0.4 ? 'Warning' : 'Critical';
-                    const statusClass = dev <= 0.2 ? 'bg-green-100 text-green-800' : dev <= 0.4 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
+                holeData.forEach(function(hole) {
+                    var p = hole.properties;
+                    var dev = parseFloat(p.hole_deviation) || 0;
+                    var status = dev <= 0.2 ? 'Excellent' : dev <= 0.4 ? 'Warning' : 'Critical';
+                    var statusClass = dev <= 0.2 ? 'bg-green-100 text-green-800' : dev <= 0.4 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
                     
                     tbody.innerHTML += `
                         <tr class="hover:bg-blue-50 cursor-pointer">
@@ -774,7 +791,7 @@
             }
 
             function populateMonitoringTable() {
-                const tbody = document.getElementById('monitoring-data-body');
+                var tbody = document.getElementById('monitoring-data-body');
                 if (!tbody) return;
                 
                 tbody.innerHTML = '';
@@ -784,9 +801,9 @@
                     return;
                 }
                 
-                monitoringData.forEach(item => {
-                    const p = item.properties;
-                    const statusClass = p.status === 'Normal' ? 'bg-green-100 text-green-800' :
+                monitoringData.forEach(function(item) {
+                    var p = item.properties;
+                    var statusClass = p.status === 'Normal' ? 'bg-green-100 text-green-800' :
                                        p.status === 'Warning' ? 'bg-yellow-100 text-yellow-800' :
                                        'bg-red-100 text-red-800';
                     
@@ -803,14 +820,19 @@
             }
 
             function updateBlastMonitoringCounts() {
-                const normal = monitoringData.filter(m => m.properties.status === 'Normal').length;
-                const warning = monitoringData.filter(m => m.properties.status === 'Warning').length;
-                const critical = monitoringData.filter(m => m.properties.status === 'Critical').length;
+                var normal = monitoringData.filter(function(m) { return m.properties.status === 'Normal'; }).length;
+                var warning = monitoringData.filter(function(m) { return m.properties.status === 'Warning'; }).length;
+                var critical = monitoringData.filter(function(m) { return m.properties.status === 'Critical'; }).length;
                 
-                document.getElementById('total-monitoring').textContent = monitoringData.length;
-                document.getElementById('normal-count').textContent = normal;
-                document.getElementById('warning-count').textContent = warning;
-                document.getElementById('critical-count').textContent = critical;
+                var totalEl = document.getElementById('total-monitoring');
+                var normalEl = document.getElementById('normal-count');
+                var warningEl = document.getElementById('warning-count');
+                var criticalEl = document.getElementById('critical-count');
+                
+                if (totalEl) totalEl.textContent = monitoringData.length;
+                if (normalEl) normalEl.textContent = normal;
+                if (warningEl) warningEl.textContent = warning;
+                if (criticalEl) criticalEl.textContent = critical;
             }
 
             // ============================================
@@ -818,11 +840,11 @@
             // ============================================
             function createCharts() {
                 // Destroy existing charts
-                Object.values(charts).forEach(c => {
-                    if (c && typeof c.destroy === 'function') {
-                        c.destroy();
+                for (var key in charts) {
+                    if (charts[key] && typeof charts[key].destroy === 'function') {
+                        charts[key].destroy();
                     }
-                });
+                }
                 charts = {};
                 
                 createDeviationChart();
@@ -831,10 +853,12 @@
             }
 
             function createDeviationChart() {
-                const ctx = document.getElementById('deviation-chart')?.getContext('2d');
+                var ctx = document.getElementById('deviation-chart');
                 if (!ctx) return;
                 
-                const deviations = holeData.map(h => parseFloat(h.properties.hole_deviation) || 0);
+                ctx = ctx.getContext('2d');
+                
+                var deviations = holeData.map(function(h) { return parseFloat(h.properties.hole_deviation) || 0; });
                 
                 if (deviations.length === 0) {
                     charts.deviationChart = new Chart(ctx, { 
@@ -845,8 +869,8 @@
                     return;
                 }
                 
-                const bins = { '0-0.2m': 0, '0.2-0.4m': 0, '>0.4m': 0 };
-                deviations.forEach(d => {
+                var bins = { '0-0.2m': 0, '0.2-0.4m': 0, '>0.4m': 0 };
+                deviations.forEach(function(d) {
                     if (d <= 0.2) bins['0-0.2m']++;
                     else if (d <= 0.4) bins['0.2-0.4m']++;
                     else bins['>0.4m']++;
@@ -858,7 +882,7 @@
                         labels: Object.keys(bins),
                         datasets: [{
                             label: 'Number of Holes',
-                            data: Object.values(bins),
+                            data: [bins['0-0.2m'], bins['0.2-0.4m'], bins['>0.4m']],
                             backgroundColor: ['#4ade80', '#fbbf24', '#ef4444']
                         }]
                     },
@@ -872,11 +896,13 @@
             }
 
             function createComplianceChart() {
-                const ctx = document.getElementById('compliance-chart')?.getContext('2d');
+                var ctx = document.getElementById('compliance-chart');
                 if (!ctx) return;
                 
-                const inSpec = holeData.filter(h => h.properties.in_spec_02).length;
-                const outSpec = holeData.length - inSpec;
+                ctx = ctx.getContext('2d');
+                
+                var inSpec = holeData.filter(function(h) { return h.properties.in_spec_02; }).length;
+                var outSpec = holeData.length - inSpec;
                 
                 if (holeData.length === 0) {
                     charts.complianceChart = new Chart(ctx, { 
@@ -903,12 +929,14 @@
             }
 
             function createHoleStatusChart() {
-                const ctx = document.getElementById('hole-status-chart')?.getContext('2d');
+                var ctx = document.getElementById('hole-status-chart');
                 if (!ctx) return;
                 
-                let exc = 0, warn = 0, crit = 0;
-                holeData.forEach(h => {
-                    const d = parseFloat(h.properties.hole_deviation) || 0;
+                ctx = ctx.getContext('2d');
+                
+                var exc = 0, warn = 0, crit = 0;
+                holeData.forEach(function(h) {
+                    var d = parseFloat(h.properties.hole_deviation) || 0;
                     if (d <= 0.2) exc++;
                     else if (d <= 0.4) warn++;
                     else crit++;
@@ -938,50 +966,52 @@
                 });
             }
 
-            function createVerticalDeviationChart() {
-                // This would need a container element - you may want to add this
-                console.log('Vertical deviation chart placeholder');
-            }
-
             function createHorizontalDeviationChart() {
-                const container = document.getElementById('horizontal-deviation-chart');
-                if (!container || !holeData.length) {
-                    if (container) container.innerHTML = '<div class="text-center text-gray-500 py-8">No horizontal deviation data</div>';
+                var container = document.getElementById('horizontal-deviation-chart');
+                if (!container) return;
+                
+                container.innerHTML = '';
+                
+                if (!holeData.length) {
+                    container.innerHTML = '<div class="text-center text-gray-500 py-8">No horizontal deviation data</div>';
                     return;
                 }
 
-                container.innerHTML = '';
+                var deviations = holeData.map(function(h) {
+                    return {
+                        dx: parseFloat(h.properties.dx) || 0,
+                        dy: parseFloat(h.properties.dy) || 0,
+                        inSpec: h.properties.in_spec_02
+                    };
+                });
 
-                const deviations = holeData.map(h => ({
-                    dx: parseFloat(h.properties.dx) || 0,
-                    dy: parseFloat(h.properties.dy) || 0,
-                    inSpec: h.properties.in_spec_02
-                }));
+                var within02 = document.getElementById('holes-within-0.2');
+                var within04 = document.getElementById('holes-within-0.4');
+                
+                if (within02) within02.textContent = holeData.filter(function(h) { return h.properties.in_spec_02; }).length;
+                if (within04) within04.textContent = holeData.filter(function(h) { return h.properties.in_spec_04; }).length;
 
-                document.getElementById('holes-within-0.2').textContent = holeData.filter(h => h.properties.in_spec_02).length;
-                document.getElementById('holes-within-0.4').textContent = holeData.filter(h => h.properties.in_spec_04).length;
+                var w = container.clientWidth || 300;
+                var h = container.clientHeight || 300;
+                var cx = w/2, cy = h/2;
+                var scale = Math.min(w, h)/2 * 0.8;
 
-                const w = container.clientWidth || 300;
-                const h = container.clientHeight || 300;
-                const cx = w/2, cy = h/2;
-                const scale = Math.min(w, h)/2 * 0.8;
-
-                [0.2, 0.4].forEach((r, i) => {
-                    const circle = document.createElement('div');
+                [0.2, 0.4].forEach(function(r, i) {
+                    var circle = document.createElement('div');
                     circle.className = 'deviation-circle';
-                    circle.style.cssText = `left:${cx}px;top:${cy}px;width:${r*scale*2}px;height:${r*scale*2}px;border-color:${i===0?'#4ade80':'#fbbf24'}`;
+                    circle.style.cssText = 'left:' + cx + 'px;top:' + cy + 'px;width:' + (r*scale*2) + 'px;height:' + (r*scale*2) + 'px;border-color:' + (i===0?'#4ade80':'#fbbf24');
                     container.appendChild(circle);
                 });
 
-                const target = document.createElement('div');
+                var target = document.createElement('div');
                 target.className = 'deviation-target';
-                target.style.cssText = `left:${cx}px;top:${cy}px`;
+                target.style.cssText = 'left:' + cx + 'px;top:' + cy + 'px';
                 container.appendChild(target);
 
-                deviations.forEach(d => {
-                    const point = document.createElement('div');
+                deviations.forEach(function(d) {
+                    var point = document.createElement('div');
                     point.className = 'deviation-point';
-                    point.style.cssText = `left:${cx + d.dx*scale}px;top:${cy + d.dy*scale}px;background:${d.inSpec?'#4ade80':'#ef4444'}`;
+                    point.style.cssText = 'left:' + (cx + d.dx*scale) + 'px;top:' + (cy + d.dy*scale) + 'px;background:' + (d.inSpec?'#4ade80':'#ef4444');
                     container.appendChild(point);
                 });
             }
@@ -990,32 +1020,40 @@
             // UTILITY FUNCTIONS
             // ============================================
             function updateBlastInfo() {
+                var totalEl = document.getElementById('total-holes');
+                var inSpecEl = document.getElementById('in-spec');
+                var avgEl = document.getElementById('avg-deviation-summary');
+                var maxEl = document.getElementById('max-deviation');
+                var within02 = document.getElementById('holes-within-0.2');
+                var within04 = document.getElementById('holes-within-0.4');
+                
                 if (holeData.length === 0) {
-                    document.getElementById('total-holes').textContent = '0';
-                    document.getElementById('in-spec').textContent = '0%';
-                    document.getElementById('avg-deviation-summary').textContent = '0.00';
-                    document.getElementById('max-deviation').textContent = '0.00';
+                    if (totalEl) totalEl.textContent = '0';
+                    if (inSpecEl) inSpecEl.textContent = '0%';
+                    if (avgEl) avgEl.textContent = '0.00';
+                    if (maxEl) maxEl.textContent = '0.00';
                     return;
                 }
                 
-                const deviations = holeData.map(h => Math.abs(parseFloat(h.properties.hole_deviation) || 0));
-                const avg = (deviations.reduce((a,b)=>a+b,0)/deviations.length).toFixed(2);
-                const max = Math.max(...deviations).toFixed(2);
-                const total = holeData.length;
-                const inSpec = holeData.filter(h => h.properties.in_spec_02).length;
+                var deviations = holeData.map(function(h) { return Math.abs(parseFloat(h.properties.hole_deviation) || 0); });
+                var avg = (deviations.reduce(function(a,b) { return a+b; },0)/deviations.length).toFixed(2);
+                var max = Math.max.apply(null, deviations).toFixed(2);
+                var total = holeData.length;
+                var inSpec = holeData.filter(function(h) { return h.properties.in_spec_02; }).length;
                 
-                document.getElementById('total-holes').textContent = total;
-                document.getElementById('in-spec').textContent = Math.round((inSpec/total)*100) + '%';
-                document.getElementById('avg-deviation-summary').textContent = avg;
-                document.getElementById('max-deviation').textContent = max;
-                document.getElementById('holes-within-0.2').textContent = inSpec;
-                document.getElementById('holes-within-0.4').textContent = holeData.filter(h => h.properties.in_spec_04).length;
+                if (totalEl) totalEl.textContent = total;
+                if (inSpecEl) inSpecEl.textContent = Math.round((inSpec/total)*100) + '%';
+                if (avgEl) avgEl.textContent = avg;
+                if (maxEl) maxEl.textContent = max;
+                if (within02) within02.textContent = inSpec;
+                if (within04) within04.textContent = holeData.filter(function(h) { return h.properties.in_spec_04; }).length;
             }
 
             function setCurrentDate() {
-                const el = document.getElementById('current-date');
+                var el = document.getElementById('current-date');
                 if (el) {
-                    el.textContent = new Date().toLocaleDateString('en-US', { 
+                    var now = new Date();
+                    el.textContent = now.toLocaleDateString('en-US', { 
                         year: 'numeric', month: 'short', day: 'numeric',
                         hour: '2-digit', minute: '2-digit'
                     });
@@ -1023,29 +1061,37 @@
             }
 
             function updateHeaderBlastInfo(text) {
-                const h1 = document.querySelector('header h1');
-                if (h1) h1.innerHTML = `<i class="fas fa-bomb mr-2"></i>Blast Data Monitoring Dashboard - ${text}`;
+                var h1 = document.querySelector('header h1');
+                if (h1) h1.innerHTML = '<i class="fas fa-bomb mr-2"></i>Blast Data Monitoring Dashboard - ' + text;
             }
 
-            function calculateStatus(ppv, pspl, ppvLimit=2, psplLimit=117) {
+            function calculateStatus(ppv, pspl, ppvLimit, psplLimit) {
+                ppvLimit = ppvLimit || 2;
+                psplLimit = psplLimit || 117;
+                
                 if (ppv >= ppvLimit || pspl >= psplLimit) return 'Critical';
                 if (ppv >= ppvLimit*0.8 || pspl >= psplLimit*0.8) return 'Warning';
                 return 'Normal';
             }
 
             function filterHoleTable() {
-                const holeFilter = document.getElementById('hole-id-filter')?.value.toLowerCase();
-                const devFilter = document.getElementById('deviation-filter')?.value;
-                const statusFilter = document.getElementById('status-filter')?.value;
-                const rows = document.querySelectorAll('#hole-data-table tbody tr');
+                var holeFilter = document.getElementById('hole-id-filter');
+                var devFilter = document.getElementById('deviation-filter');
+                var statusFilter = document.getElementById('status-filter');
                 
-                rows.forEach(row => {
+                holeFilter = holeFilter ? holeFilter.value.toLowerCase() : '';
+                devFilter = devFilter ? devFilter.value : '';
+                statusFilter = statusFilter ? statusFilter.value : '';
+                
+                var rows = document.querySelectorAll('#hole-data-table tbody tr');
+                
+                rows.forEach(function(row) {
                     if (row.cells.length < 6) return;
-                    const holeId = row.cells[0]?.textContent.toLowerCase() || '';
-                    const dev = parseFloat(row.cells[4]?.textContent) || 0;
-                    const status = row.cells[5]?.textContent || '';
+                    var holeId = row.cells[0] ? row.cells[0].textContent.toLowerCase() : '';
+                    var dev = parseFloat(row.cells[4] ? row.cells[4].textContent : 0) || 0;
+                    var status = row.cells[5] ? row.cells[5].textContent : '';
                     
-                    let show = true;
+                    var show = true;
                     if (holeFilter && !holeId.includes(holeFilter)) show = false;
                     if (devFilter && dev) {
                         if (devFilter === '0-0.2' && dev > 0.2) show = false;
@@ -1058,95 +1104,163 @@
             }
 
             function filterMonitoringTable() {
-                const filter = document.getElementById('monitoring-filter')?.value;
-                const rows = document.querySelectorAll('#monitoring-data-table tbody tr');
+                var filter = document.getElementById('monitoring-filter');
+                filter = filter ? filter.value : '';
                 
-                rows.forEach(row => {
-                    const statusCell = row.cells[4];
+                var rows = document.querySelectorAll('#monitoring-data-table tbody tr');
+                
+                rows.forEach(function(row) {
+                    var statusCell = row.cells[4];
                     if (statusCell) {
-                        const status = statusCell.textContent;
+                        var status = statusCell.textContent;
                         row.style.display = !filter || status === filter ? '' : 'none';
                     }
                 });
             }
 
-            // Make functions available globally for onclick handlers
-            window.openTab = function(tabName) {
-                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-button').forEach(b => {
+            function openTab(tabName) {
+                document.querySelectorAll('.tab-content').forEach(function(t) { 
+                    t.classList.remove('active'); 
+                });
+                
+                document.querySelectorAll('.tab-button').forEach(function(b) {
                     b.classList.remove('bg-blue-600', 'text-white');
                     b.classList.add('bg-gray-200');
                 });
                 
-                document.getElementById(tabName)?.classList.add('active');
-                const btn = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
+                var tab = document.getElementById(tabName);
+                if (tab) tab.classList.add('active');
+                
+                var btn = document.querySelector('.tab-button[data-tab="' + tabName + '"]');
                 if (btn) {
                     btn.classList.remove('bg-gray-200');
                     btn.classList.add('bg-blue-600', 'text-white');
                 }
                 
-                setTimeout(() => Object.values(charts).forEach(c => c?.resize?.()), 100);
-            };
+                setTimeout(function() {
+                    for (var key in charts) {
+                        if (charts[key] && typeof charts[key].resize === 'function') {
+                            charts[key].resize();
+                        }
+                    }
+                }, 100);
+            }
 
-            window.openSummaryTab = function(tabName) {
-                document.querySelectorAll('.summary-tab-content').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('#summary .summary-tab-button').forEach(b => {
+            function openSummaryTab(tabName) {
+                document.querySelectorAll('.summary-tab-content').forEach(function(t) { 
+                    t.classList.remove('active'); 
+                });
+                
+                document.querySelectorAll('#summary .summary-tab-button').forEach(function(b) {
                     b.classList.remove('bg-blue-600', 'text-white');
                     b.classList.add('bg-gray-200');
                 });
                 
-                document.getElementById(tabName)?.classList.add('active');
-                const btn = document.querySelector(`.summary-tab-button[data-summary-tab="${tabName}"]`);
+                var tab = document.getElementById(tabName);
+                if (tab) tab.classList.add('active');
+                
+                var btn = document.querySelector('.summary-tab-button[data-summary-tab="' + tabName + '"]');
                 if (btn) {
                     btn.classList.remove('bg-gray-200');
                     btn.classList.add('bg-blue-600', 'text-white');
                 }
-            };
+            }
 
             function setupEventListeners() {
-                document.getElementById('data-source-selector')?.addEventListener('change', function() {
-                    currentTable = this.value;
-                    updateHeaderBlastInfo(this.options[this.selectedIndex].text);
-                    loadHoleData();
-                    loadMonitoringData();
-                });
+                var selector = document.getElementById('data-source-selector');
+                if (selector) {
+                    selector.addEventListener('change', function() {
+                        currentTable = this.value;
+                        updateHeaderBlastInfo(this.options[this.selectedIndex].text);
+                        loadHoleData();
+                        loadMonitoringData();
+                    });
+                }
                 
-                document.getElementById('refresh-btn')?.addEventListener('click', loadAllData);
+                var refreshBtn = document.getElementById('refresh-btn');
+                if (refreshBtn) {
+                    refreshBtn.addEventListener('click', loadAllData);
+                }
                 
-                document.getElementById('use-date-selection')?.addEventListener('change', function() {
-                    useDateSelection = this.checked;
-                    const container = document.getElementById('hole-date-range-container');
-                    const selector = document.getElementById('data-source-selector');
-                    if (useDateSelection) {
-                        container?.classList.remove('hidden');
-                        selector.disabled = true;
-                        selector.classList.add('opacity-50');
-                    } else {
-                        container?.classList.add('hidden');
-                        selector.disabled = false;
-                        selector.classList.remove('opacity-50');
-                    }
-                    loadHoleData();
-                });
+                var useDateCheck = document.getElementById('use-date-selection');
+                if (useDateCheck) {
+                    useDateCheck.addEventListener('change', function() {
+                        useDateSelection = this.checked;
+                        var container = document.getElementById('hole-date-range-container');
+                        var selector = document.getElementById('data-source-selector');
+                        
+                        if (useDateSelection) {
+                            if (container) container.classList.remove('hidden');
+                            if (selector) {
+                                selector.disabled = true;
+                                selector.classList.add('opacity-50');
+                            }
+                        } else {
+                            if (container) container.classList.add('hidden');
+                            if (selector) {
+                                selector.disabled = false;
+                                selector.classList.remove('opacity-50');
+                            }
+                        }
+                        loadHoleData();
+                    });
+                }
                 
-                document.getElementById('apply-hole-dates')?.addEventListener('click', () => {
-                    if (useDateSelection) loadHoleData();
-                });
-                
-                ['hole-date-from', 'hole-date-to'].forEach(id => {
-                    document.getElementById(id)?.addEventListener('change', () => {
+                var applyDates = document.getElementById('apply-hole-dates');
+                if (applyDates) {
+                    applyDates.addEventListener('click', function() {
                         if (useDateSelection) loadHoleData();
+                    });
+                }
+                
+                ['hole-date-from', 'hole-date-to'].forEach(function(id) {
+                    var el = document.getElementById(id);
+                    if (el) {
+                        el.addEventListener('change', function() {
+                            if (useDateSelection) loadHoleData();
+                        });
+                    }
+                });
+                
+                var holeFilter = document.getElementById('hole-id-filter');
+                if (holeFilter) {
+                    holeFilter.addEventListener('keyup', filterHoleTable);
+                }
+                
+                var devFilter = document.getElementById('deviation-filter');
+                if (devFilter) {
+                    devFilter.addEventListener('change', filterHoleTable);
+                }
+                
+                var statusFilter = document.getElementById('status-filter');
+                if (statusFilter) {
+                    statusFilter.addEventListener('change', filterHoleTable);
+                }
+                
+                var monFilter = document.getElementById('monitoring-filter');
+                if (monFilter) {
+                    monFilter.addEventListener('change', filterMonitoringTable);
+                }
+                
+                // Tab buttons
+                document.querySelectorAll('.tab-button').forEach(function(b) {
+                    b.addEventListener('click', function() {
+                        openTab(this.dataset.tab);
                     });
                 });
                 
-                document.getElementById('hole-id-filter')?.addEventListener('keyup', filterHoleTable);
-                document.getElementById('deviation-filter')?.addEventListener('change', filterHoleTable);
-                document.getElementById('status-filter')?.addEventListener('change', filterHoleTable);
-                document.getElementById('monitoring-filter')?.addEventListener('change', filterMonitoringTable);
+                document.querySelectorAll('.summary-tab-button').forEach(function(b) {
+                    b.addEventListener('click', function() {
+                        openSummaryTab(this.dataset.summaryTab);
+                    });
+                });
                 
-                setTimeout(() => {
-                    document.getElementById('fit-all-btn')?.addEventListener('click', fitAllData);
-                    document.getElementById('geolocate-btn')?.addEventListener('click', locateUser);
+                setTimeout(function() {
+                    var fitBtn = document.getElementById('fit-all-btn');
+                    if (fitBtn) fitBtn.addEventListener('click', fitAllData);
+                    
+                    var geoBtn = document.getElementById('geolocate-btn');
+                    if (geoBtn) geoBtn.addEventListener('click', locateUser);
                 }, 100);
             }
 
@@ -1155,21 +1269,32 @@
                     alert('Geolocation not supported');
                     return;
                 }
-                navigator.geolocation.getCurrentPosition(pos => {
-                    map.flyTo([pos.coords.latitude, pos.coords.longitude], 10);
-                    L.marker([pos.coords.latitude, pos.coords.longitude], {
-                        icon: L.divIcon({ className: 'user-location-marker', html: '<i class="fas fa-user text-blue-600 text-xl"></i>', iconSize: [24,24] })
-                    }).addTo(map).bindPopup('Your Location').openPopup();
+                navigator.geolocation.getCurrentPosition(function(pos) {
+                    if (map) {
+                        map.flyTo([pos.coords.latitude, pos.coords.longitude], 10);
+                        L.marker([pos.coords.latitude, pos.coords.longitude], {
+                            icon: L.divIcon({ 
+                                className: 'user-location-marker', 
+                                html: '<i class="fas fa-user text-blue-600 text-xl"></i>', 
+                                iconSize: [24,24] 
+                            })
+                        }).addTo(map).bindPopup('Your Location').openPopup();
+                    }
                 });
             }
 
-            // Initialize when DOM is ready
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', initializeDashboard);
-            } else {
-                initializeDashboard();
-            }
+            // Return public methods
+            return {
+                init: initializeDashboard,
+                openTab: openTab,
+                openSummaryTab: openSummaryTab
+            };
         })();
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            BlastDashboard.init();
+        });
     </script>
 </body>
 </html>
