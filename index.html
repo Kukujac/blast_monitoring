@@ -583,6 +583,8 @@
             let holeMarkers = [];
             // Track clustering state
             let clusteringEnabled = true;
+            // Track if fit bounds has been called
+            let hasFittedBounds = false;
 
             // ============================================
             // INITIALIZATION
@@ -624,10 +626,12 @@
                     return;
                 }
                 
-                // Center on Ghana
+                // Center on Ghana with a reasonable zoom level
                 map = L.map('map', {
-                    zoomControl: false
-                }).setView([7.5, -1.5], 7);
+                    zoomControl: false,
+                    zoom: 7,
+                    center: [7.5, -1.5]
+                });
                 
                 // Add fullscreen control manually if plugin failed
                 try {
@@ -882,7 +886,7 @@
                     if (!isNaN(easting) && !isNaN(northing) && easting > 0 && northing > 0) {
                         const wgs84 = utmToWgs84(easting, northing);
                         
-                        if (wgs84 && wgs84.lat && wgs84.lon) {
+                        if (wgs84 && wgs84.lat && wgs84.lon && !isNaN(wgs84.lat) && !isNaN(wgs84.lon)) {
                             const marker = L.circleMarker([wgs84.lat, wgs84.lon], {
                                 color: '#3333ff',
                                 fillColor: deviation > 0.4 ? '#ff3333' : deviation > 0.2 ? '#ffcc00' : '#33ff33',
@@ -930,7 +934,13 @@
                     
                     console.log(`Plotted ${holeMarkers.length} hole markers`);
                     
-                    setTimeout(fitAllData, 500);
+                    // Only fit bounds once after all data is loaded
+                    if (!hasFittedBounds) {
+                        setTimeout(() => {
+                            fitAllData();
+                            hasFittedBounds = true;
+                        }, 1000);
+                    }
                 }
             }
 
@@ -957,7 +967,7 @@
                             if (easting && northing) {
                                 const wgs84 = utmToWgs84(easting, northing);
                                 
-                                if (wgs84 && wgs84.lat && wgs84.lon) {
+                                if (wgs84 && wgs84.lat && wgs84.lon && !isNaN(wgs84.lat) && !isNaN(wgs84.lon)) {
                                     let color = '#66bb6a';
                                     if (item.properties.status === 'Warning') color = '#ffcc00';
                                     if (item.properties.status === 'Critical') color = '#ff4444';
@@ -998,30 +1008,85 @@
             function fitAllData() {
                 if (!map) return;
                 
+                console.log('Fitting bounds to all data');
+                
                 const bounds = L.latLngBounds();
                 let hasData = false;
+                let pointCount = 0;
 
-                [actualLayer, monitoringLayer, pitLayer].forEach(layer => {
-                    if (layer && layer.getLayers().length > 0) {
-                        layer.eachLayer(function(subLayer) {
-                            try {
-                                if (subLayer.getBounds) {
-                                    const layerBounds = subLayer.getBounds();
-                                    if (layerBounds && layerBounds.isValid()) {
-                                        bounds.extend(layerBounds);
-                                        hasData = true;
+                // Collect all points from actualLayer
+                if (actualLayer && actualLayer.getLayers().length > 0) {
+                    actualLayer.eachLayer(function(subLayer) {
+                        try {
+                            if (subLayer instanceof L.MarkerClusterGroup) {
+                                // For cluster groups, we need to get the markers
+                                subLayer.eachLayer(function(marker) {
+                                    if (marker.getLatLng) {
+                                        const latlng = marker.getLatLng();
+                                        if (latlng && latlng.lat && latlng.lng) {
+                                            bounds.extend(latlng);
+                                            hasData = true;
+                                            pointCount++;
+                                        }
                                     }
-                                } else if (subLayer.getLatLng) {
-                                    bounds.extend(subLayer.getLatLng());
+                                });
+                            } else if (subLayer.getLatLng) {
+                                const latlng = subLayer.getLatLng();
+                                if (latlng && latlng.lat && latlng.lng) {
+                                    bounds.extend(latlng);
+                                    hasData = true;
+                                    pointCount++;
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('Error getting bounds from layer:', e);
+                        }
+                    });
+                }
+
+                // Add monitoring points
+                if (monitoringLayer && monitoringLayer.getLayers().length > 0) {
+                    monitoringLayer.eachLayer(function(marker) {
+                        try {
+                            if (marker.getLatLng) {
+                                const latlng = marker.getLatLng();
+                                if (latlng && latlng.lat && latlng.lng) {
+                                    bounds.extend(latlng);
+                                    hasData = true;
+                                    pointCount++;
+                                }
+                            }
+                        } catch (e) {}
+                    });
+                }
+
+                // Add pit boundaries
+                if (pitLayer && pitLayer.getLayers().length > 0) {
+                    pitLayer.eachLayer(function(layer) {
+                        try {
+                            if (layer.getBounds) {
+                                const layerBounds = layer.getBounds();
+                                if (layerBounds && layerBounds.isValid()) {
+                                    bounds.extend(layerBounds);
                                     hasData = true;
                                 }
-                            } catch (e) {}
-                        });
-                    }
-                });
+                            }
+                        } catch (e) {}
+                    });
+                }
 
-                if (hasData) {
-                    map.fitBounds(bounds, { padding: [20, 20], maxZoom: 18 });
+                console.log(`Found ${pointCount} points for bounds fitting`);
+
+                if (hasData && bounds.isValid()) {
+                    map.fitBounds(bounds, { 
+                        padding: [50, 50], 
+                        maxZoom: 15,
+                        animate: true,
+                        duration: 1
+                    });
+                    console.log('Map fitted to bounds');
+                } else {
+                    console.warn('No valid bounds to fit');
                 }
             }
 
@@ -1463,8 +1528,14 @@
                     const fitAllBtn = document.getElementById('fit-all-btn');
                     const toggleClusterBtn = document.getElementById('toggle-cluster-btn');
                     
-                    if (fitAllBtn) fitAllBtn.addEventListener('click', fitAllData);
-                    if (toggleClusterBtn) toggleClusterBtn.addEventListener('click', toggleClusters);
+                    if (fitAllBtn) {
+                        fitAllBtn.addEventListener('click', fitAllData);
+                        console.log('Fit all button listener added');
+                    }
+                    if (toggleClusterBtn) {
+                        toggleClusterBtn.addEventListener('click', toggleClusters);
+                        console.log('Toggle cluster button listener added');
+                    }
                 }, 2000);
             }
 
