@@ -8,7 +8,7 @@
     <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💣</text></svg>">
 
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS - Use production version -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Font Awesome -->
@@ -24,8 +24,8 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
     
-    <!-- Use a working fullscreen plugin -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@1.6.0/dist/leaflet.fullscreen.css" />
+    <!-- Use working fullscreen plugin from different CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.fullscreen@2.4.0/dist/leaflet.fullscreen.css" />
     
     <!-- Leaflet Measure CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet-measure@3.1.0/dist/leaflet-measure.css" />
@@ -163,6 +163,7 @@
             backdrop-filter: blur(5px);
             padding: 8px;
             width: 140px;
+            z-index: 1000;
         }
 
         .map-controls h3 {
@@ -175,6 +176,15 @@
             font-size: 10px;
             padding: 4px 6px;
             margin-bottom: 4px;
+            width: 100%;
+            background-color: #dbeafe;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .map-controls button:hover {
+            background-color: #bfdbfe;
         }
 
         .map-controls button:last-child {
@@ -190,6 +200,8 @@
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(5px);
+            padding: 8px;
+            z-index: 1000;
         }
         
         .summary-tab-content {
@@ -246,6 +258,12 @@
             position: relative;
             width: 100%;
             min-height: 200px;
+        }
+
+        /* Fix for Leaflet fullscreen */
+        .leaflet-control-fullscreen a {
+            background: #fff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path d="M2 2h4v1H3v3H2V2zm8 0h4v4h-1V3h-3V2zm4 8v4h-4v-1h3v-3h1zm-8 4H2v-4h1v3h3v1z"/></svg>') 50% 50% no-repeat;
+            background-size: 16px 16px;
         }
     </style>
 </head>
@@ -503,9 +521,10 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         
-    <!-- Leaflet Plugins - use working versions -->
+    <!-- Leaflet Plugins - use working versions from different CDNs -->
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-    <script src="https://unpkg.com/leaflet.fullscreen@1.6.0/dist/Leaflet.fullscreen.min.js"></script>
+    <!-- Use jsDelivr instead of unpkg for fullscreen plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/leaflet.fullscreen@2.4.0/dist/Leaflet.fullscreen.min.js"></script>
     <script src="https://unpkg.com/leaflet-measure@3.1.0/dist/leaflet-measure.js"></script>
     
     <!-- Dashboard JavaScript -->
@@ -570,26 +589,30 @@
             // ============================================
             function initializeDashboard() {
                 console.log('Initializing dashboard...');
-                initMap();
-                setCurrentDate();
                 
-                const today = new Date();
-                const thirtyDaysAgo = new Date();
-                thirtyDaysAgo.setDate(today.getDate() - 30);
-                
-                const dateFrom = document.getElementById('hole-date-from');
-                const dateTo = document.getElementById('hole-date-to');
-                if (dateFrom) dateFrom.value = thirtyDaysAgo.toISOString().split('T')[0];
-                if (dateTo) dateTo.value = today.toISOString().split('T')[0];
-                
-                setupEventListeners();
-                
-                const selector = document.getElementById('data-source-selector');
-                if (selector) {
-                    currentTable = selector.value;
-                }
-                
-                loadAllData();
+                // Wait a bit for Leaflet plugins to load
+                setTimeout(() => {
+                    initMap();
+                    setCurrentDate();
+                    
+                    const today = new Date();
+                    const thirtyDaysAgo = new Date();
+                    thirtyDaysAgo.setDate(today.getDate() - 30);
+                    
+                    const dateFrom = document.getElementById('hole-date-from');
+                    const dateTo = document.getElementById('hole-date-to');
+                    if (dateFrom) dateFrom.value = thirtyDaysAgo.toISOString().split('T')[0];
+                    if (dateTo) dateTo.value = today.toISOString().split('T')[0];
+                    
+                    setupEventListeners();
+                    
+                    const selector = document.getElementById('data-source-selector');
+                    if (selector) {
+                        currentTable = selector.value;
+                    }
+                    
+                    loadAllData();
+                }, 500);
             }
 
             // ============================================
@@ -603,9 +626,17 @@
                 
                 // Center on Ghana
                 map = L.map('map', {
-                    fullscreenControl: true,
                     zoomControl: false
                 }).setView([7.5, -1.5], 7);
+                
+                // Add fullscreen control manually if plugin failed
+                try {
+                    if (L.control.fullscreen) {
+                        L.control.fullscreen().addTo(map);
+                    }
+                } catch (e) {
+                    console.warn('Fullscreen control not available');
+                }
                 
                 L.control.zoom({ position: 'topleft' }).addTo(map);
                 
@@ -663,9 +694,9 @@
                     const div = L.DomUtil.create('div', 'legend bg-white p-3 rounded shadow text-sm');
                     div.innerHTML = `
                         <h4 class="font-bold mb-2">Legend</h4>
-                        <div class="flex items-center mb-1"><i class="w-4 h-4 bg-blue-600 rounded-full mr-2"></i> Hole Position</div>
-                        <div class="flex items-center mb-1"><i class="w-4 h-4 bg-yellow-400 rounded-full mr-2"></i> Monitoring Point</div>
-                        <div class="flex items-center"><i class="w-4 h-4 bg-gray-500 mr-2" style="background: repeating-linear-gradient(45deg, #555, #555 2px, #888 2px, #888 4px);"></i> Pit Boundary</div>
+                        <div class="flex items-center mb-1"><span class="w-4 h-4 bg-blue-600 rounded-full mr-2"></span> Hole Position</div>
+                        <div class="flex items-center mb-1"><span class="w-4 h-4 bg-yellow-400 rounded-full mr-2"></span> Monitoring Point</div>
+                        <div class="flex items-center"><span class="w-4 h-4 bg-gray-500 mr-2" style="background: repeating-linear-gradient(45deg, #555, #555 2px, #888 2px, #888 4px);"></span> Pit Boundary</div>
                     `;
                     return div;
                 };
@@ -848,10 +879,10 @@
                     const easting = parseFloat(props.actual_easting);
                     const northing = parseFloat(props.actual_northing);
                     
-                    if (!isNaN(easting) && !isNaN(northing)) {
+                    if (!isNaN(easting) && !isNaN(northing) && easting > 0 && northing > 0) {
                         const wgs84 = utmToWgs84(easting, northing);
                         
-                        if (wgs84) {
+                        if (wgs84 && wgs84.lat && wgs84.lon) {
                             const marker = L.circleMarker([wgs84.lat, wgs84.lon], {
                                 color: '#3333ff',
                                 fillColor: deviation > 0.4 ? '#ff3333' : deviation > 0.2 ? '#ffcc00' : '#33ff33',
@@ -876,20 +907,28 @@
                     // Start with clustering enabled
                     clusteringEnabled = true;
                     
-                    const cluster = L.markerClusterGroup({
-                        chunkedLoading: true,
-                        maxClusterRadius: 50,
-                        spiderfyOnMaxZoom: true,
-                        showCoverageOnHover: false,
-                        zoomToBoundsOnClick: true,
-                        disableClusteringAtZoom: 16
-                    });
+                    try {
+                        const cluster = L.markerClusterGroup({
+                            chunkedLoading: true,
+                            maxClusterRadius: 50,
+                            spiderfyOnMaxZoom: true,
+                            showCoverageOnHover: false,
+                            zoomToBoundsOnClick: true,
+                            disableClusteringAtZoom: 16
+                        });
+                        
+                        holeMarkers.forEach(m => cluster.addLayer(m));
+                        actualLayer.addLayer(cluster);
+                    } catch (e) {
+                        // Fallback if clustering fails
+                        console.warn('Clustering failed, using individual markers', e);
+                        holeMarkers.forEach(m => actualLayer.addLayer(m));
+                        clusteringEnabled = false;
+                    }
                     
-                    holeMarkers.forEach(m => cluster.addLayer(m));
-                    actualLayer.addLayer(cluster);
                     actualLayer.addTo(map);
                     
-                    console.log(`Plotted ${holeMarkers.length} hole markers with clustering enabled`);
+                    console.log(`Plotted ${holeMarkers.length} hole markers`);
                     
                     setTimeout(fitAllData, 500);
                 }
@@ -915,32 +954,34 @@
                         
                         if (geoJson && geoJson.coordinates) {
                             const [easting, northing] = geoJson.coordinates;
-                            const wgs84 = utmToWgs84(easting, northing);
-                            
-                            if (wgs84) {
-                                let color = '#66bb6a';
-                                if (item.properties.status === 'Warning') color = '#ffcc00';
-                                if (item.properties.status === 'Critical') color = '#ff4444';
+                            if (easting && northing) {
+                                const wgs84 = utmToWgs84(easting, northing);
                                 
-                                count++;
-                                
-                                const marker = L.circleMarker([wgs84.lat, wgs84.lon], {
-                                    color: color,
-                                    fillColor: color,
-                                    radius: 6,
-                                    fillOpacity: 0.8,
-                                    weight: 2
-                                }).bindPopup(`
-                                    <div class="text-sm">
-                                        <h3 class="font-bold mb-1">${item.properties.location}</h3>
-                                        <p><b>Date:</b> ${item.properties.date}</p>
-                                        <p><b>PPV:</b> ${item.properties.ppv.toFixed(2)} mm/s</p>
-                                        <p><b>PSPL:</b> ${item.properties.pspl.toFixed(1)} dB</p>
-                                        <p><b>Status:</b> ${item.properties.status}</p>
-                                    </div>
-                                `);
-                                
-                                monitoringLayer.addLayer(marker);
+                                if (wgs84 && wgs84.lat && wgs84.lon) {
+                                    let color = '#66bb6a';
+                                    if (item.properties.status === 'Warning') color = '#ffcc00';
+                                    if (item.properties.status === 'Critical') color = '#ff4444';
+                                    
+                                    count++;
+                                    
+                                    const marker = L.circleMarker([wgs84.lat, wgs84.lon], {
+                                        color: color,
+                                        fillColor: color,
+                                        radius: 6,
+                                        fillOpacity: 0.8,
+                                        weight: 2
+                                    }).bindPopup(`
+                                        <div class="text-sm">
+                                            <h3 class="font-bold mb-1">${item.properties.location}</h3>
+                                            <p><b>Date:</b> ${item.properties.date}</p>
+                                            <p><b>PPV:</b> ${item.properties.ppv.toFixed(2)} mm/s</p>
+                                            <p><b>PSPL:</b> ${item.properties.pspl.toFixed(1)} dB</p>
+                                            <p><b>Status:</b> ${item.properties.status}</p>
+                                        </div>
+                                    `);
+                                    
+                                    monitoringLayer.addLayer(marker);
+                                }
                             }
                         }
                     } catch (e) {
@@ -1004,19 +1045,27 @@
                 } else {
                     // Currently individual -> switch to clustered
                     console.log('Switching to clustered view');
-                    const cluster = L.markerClusterGroup({ 
-                        maxClusterRadius: 50,
-                        chunkedLoading: true,
-                        spiderfyOnMaxZoom: true,
-                        showCoverageOnHover: false,
-                        zoomToBoundsOnClick: true,
-                        disableClusteringAtZoom: 16
-                    });
-                    
-                    holeMarkers.forEach(marker => {
-                        cluster.addLayer(marker);
-                    });
-                    actualLayer.addLayer(cluster);
+                    try {
+                        const cluster = L.markerClusterGroup({ 
+                            maxClusterRadius: 50,
+                            chunkedLoading: true,
+                            spiderfyOnMaxZoom: true,
+                            showCoverageOnHover: false,
+                            zoomToBoundsOnClick: true,
+                            disableClusteringAtZoom: 16
+                        });
+                        
+                        holeMarkers.forEach(marker => {
+                            cluster.addLayer(marker);
+                        });
+                        actualLayer.addLayer(cluster);
+                    } catch (e) {
+                        console.error('Error creating cluster:', e);
+                        // Fallback to individual markers
+                        holeMarkers.forEach(marker => {
+                            actualLayer.addLayer(marker);
+                        });
+                    }
                 }
                 
                 // Toggle the state
@@ -1409,10 +1458,14 @@
                 document.getElementById('status-filter')?.addEventListener('change', filterHoleTable);
                 document.getElementById('monitoring-filter')?.addEventListener('change', filterMonitoringTable);
                 
+                // Add event listeners for map controls after they're created
                 setTimeout(() => {
-                    document.getElementById('fit-all-btn')?.addEventListener('click', fitAllData);
-                    document.getElementById('toggle-cluster-btn')?.addEventListener('click', toggleClusters);
-                }, 1000);
+                    const fitAllBtn = document.getElementById('fit-all-btn');
+                    const toggleClusterBtn = document.getElementById('toggle-cluster-btn');
+                    
+                    if (fitAllBtn) fitAllBtn.addEventListener('click', fitAllData);
+                    if (toggleClusterBtn) toggleClusterBtn.addEventListener('click', toggleClusters);
+                }, 2000);
             }
 
             // Initialize
