@@ -6,7 +6,7 @@
     <title>Blast Data Monitoring Dashboard</title>
     
     <!-- Favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💣</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0-0-100-100'><text y='.9em' font-size='90'>💣</text></svg>">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -825,16 +825,35 @@
             });
 
             // ============================================
-            // COORDINATE TRANSFORMATION
+            // COORDINATE TRANSFORMATION - FIXED VERSION
             // ============================================
-            // Define EPSG:32630 (UTM zone 30N)
-            proj4.defs("EPSG:32630", "+proj=utm +zone=30 +ellps=WGS84 +datum=WGS84 +units=m +no_defs");
+            // Define EPSG:32630 (UTM zone 30N) with correct parameters
+            proj4.defs("EPSG:32630", "+proj=utm +zone=30 +datum=WGS84 +units=m +no_defs +type=crs");
+            
+            // Also define WGS84 for clarity
+            proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs +type=crs");
             
             // Function to convert UTM (EPSG:32630) to WGS84 (EPSG:4326)
             function utmToWgs84(easting, northing) {
                 try {
+                    // Log input coordinates for debugging
+                    console.log('Converting UTM:', { easting, northing });
+                    
                     // Use proj4 to transform coordinates
-                    const [lon, lat] = proj4("EPSG:32630", "EPSG:4326", [easting, northing]);
+                    const result = proj4("EPSG:32630", "EPSG:4326", [easting, northing]);
+                    
+                    // proj4 returns [longitude, latitude]
+                    const lon = result[0];
+                    const lat = result[1];
+                    
+                    console.log('Converted to WGS84:', { lat, lon });
+                    
+                    // Check if coordinates are reasonable (within expected range for the region)
+                    if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+                        console.warn('Invalid coordinates after transformation:', { lat, lon });
+                        return null;
+                    }
+                    
                     return { lat, lon };
                 } catch (error) {
                     console.error('Error transforming coordinates:', error);
@@ -894,16 +913,12 @@
                     return;
                 }
                 
-                // Set initial view to approximate location of the data
-                // Convert a sample UTM coordinate to WGS84 for initial view
-                const sampleLatLon = utmToWgs84(500000, 4000000); // Approximate center of UTM zone 30
-                const initialLat = sampleLatLon ? sampleLatLon.lat : -22.5;
-                const initialLon = sampleLatLon ? sampleLatLon.lon : 118.5;
-                
+                // Set initial view to approximate location of Pilbara region, Western Australia
+                // This is a reasonable default for UTM zone 30 data
                 map = L.map('map', {
                     fullscreenControl: true,
                     zoomControl: false
-                }).setView([initialLat, initialLon], 8); // Start with zoom level 8 to see the area
+                }).setView([-22.5, 118.5], 8);
                 
                 L.control.zoom({ position: 'topleft' }).addTo(map);
                 
@@ -1188,7 +1203,7 @@
             }
 
             // ============================================
-            // PLOTTING FUNCTIONS
+            // PLOTTING FUNCTIONS - FIXED VERSION
             // ============================================
             function plotHoleData() {
                 if (!actualLayer) return;
@@ -1198,7 +1213,7 @@
                 if (plannedLayer) plannedLayer.clearLayers();
                 
                 const actualMarkers = [];
-                let hasValidGeometry = false;
+                let validCoordinates = 0;
                 
                 holeData.forEach(feature => {
                     const props = feature.properties;
@@ -1213,8 +1228,8 @@
                             // Convert UTM to WGS84
                             const wgs84 = utmToWgs84(easting, northing);
                             
-                            if (wgs84) {
-                                hasValidGeometry = true;
+                            if (wgs84 && !isNaN(wgs84.lat) && !isNaN(wgs84.lon)) {
+                                validCoordinates++;
                                 
                                 // Create marker at transformed coordinates
                                 const marker = L.circleMarker([wgs84.lat, wgs84.lon], {
@@ -1227,8 +1242,8 @@
                                     <div class="text-sm">
                                         <h3 class="font-bold mb-1">Hole ${props.hole_id}</h3>
                                         <p><b>Deviation:</b> ${deviation.toFixed(2)}m</p>
-                                        <p><b>Easting:</b> ${easting.toFixed(2)}</p>
-                                        <p><b>Northing:</b> ${northing.toFixed(2)}</p>
+                                        <p><b>UTM:</b> ${easting.toFixed(2)}E, ${northing.toFixed(2)}N</p>
+                                        <p><b>WGS84:</b> ${wgs84.lat.toFixed(6)}°, ${wgs84.lon.toFixed(6)}°</p>
                                         <p><b>Status:</b> ${deviation <= 0.2 ? 'Excellent' : deviation <= 0.4 ? 'Warning' : 'Critical'}</p>
                                     </div>
                                 `);
@@ -1240,6 +1255,8 @@
                         }
                     }
                 });
+                
+                console.log(`Found ${validCoordinates} valid coordinates out of ${holeData.length} holes`);
                 
                 if (actualMarkers.length > 0) {
                     const actualCluster = L.markerClusterGroup({
@@ -1287,7 +1304,7 @@
                             // Convert to WGS84
                             const wgs84 = utmToWgs84(easting, northing);
                             
-                            if (wgs84) {
+                            if (wgs84 && !isNaN(wgs84.lat) && !isNaN(wgs84.lon)) {
                                 let color = '#66bb6a';
                                 if (item.properties.status === 'Warning') color = '#ffcc00';
                                 if (item.properties.status === 'Critical') color = '#ff4444';
@@ -1306,8 +1323,8 @@
                                         <p><b>Date:</b> ${item.properties.date}</p>
                                         <p><b>PPV:</b> ${item.properties.ppv.toFixed(2)} mm/s</p>
                                         <p><b>PSPL:</b> ${item.properties.pspl.toFixed(1)} dB</p>
-                                        <p><b>Easting:</b> ${easting.toFixed(2)}</p>
-                                        <p><b>Northing:</b> ${northing.toFixed(2)}</p>
+                                        <p><b>UTM:</b> ${easting.toFixed(2)}E, ${northing.toFixed(2)}N</p>
+                                        <p><b>WGS84:</b> ${wgs84.lat.toFixed(6)}°, ${wgs84.lon.toFixed(6)}°</p>
                                         <p><b>Status:</b> ${item.properties.status}</p>
                                     </div>
                                 `);
@@ -1355,12 +1372,6 @@
 
                 if (hasData) {
                     map.fitBounds(bounds, { padding: [20, 20], maxZoom: 18 });
-                } else {
-                    // If no data, center on a reasonable location in UTM zone 30
-                    const centerWgs84 = utmToWgs84(500000, 7500000); // Approximate center
-                    if (centerWgs84) {
-                        map.setView([centerWgs84.lat, centerWgs84.lon], 6);
-                    }
                 }
             }
 
