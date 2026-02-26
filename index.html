@@ -559,6 +559,9 @@
             // Layer groups
             let actualLayer, monitoringLayer, pitLayer;
             let map;
+            
+            // Store markers for toggling
+            let holeMarkers = [];
 
             // ============================================
             // INITIALIZATION
@@ -677,6 +680,10 @@
                         loadMonitoringData(),
                         loadPitData()
                     ]);
+                    
+                    // Ensure layers are visible
+                    ensureLayersVisible();
+                    
                 } catch (error) {
                     console.error('Error loading data:', error);
                 }
@@ -830,8 +837,7 @@
                 if (!actualLayer) return;
                 
                 actualLayer.clearLayers();
-                
-                const markers = [];
+                holeMarkers = [];
                 
                 holeData.forEach(hole => {
                     const props = hole.properties;
@@ -859,22 +865,27 @@
                                 </div>
                             `);
                             
-                            markers.push(marker);
+                            holeMarkers.push(marker);
                         }
                     }
                 });
                 
-                if (markers.length > 0) {
+                if (holeMarkers.length > 0) {
+                    // Start with clustering enabled by default
                     const cluster = L.markerClusterGroup({
                         chunkedLoading: true,
-                        maxClusterRadius: 50
+                        maxClusterRadius: 50,
+                        spiderfyOnMaxZoom: true,
+                        showCoverageOnHover: false,
+                        zoomToBoundsOnClick: true
                     });
                     
-                    markers.forEach(m => cluster.addLayer(m));
+                    holeMarkers.forEach(m => cluster.addLayer(m));
                     actualLayer.addLayer(cluster);
                     actualLayer.addTo(map);
                     
-                    console.log(`Plotted ${markers.length} hole markers`);
+                    console.log(`Plotted ${holeMarkers.length} hole markers`);
+                    
                     setTimeout(fitAllData, 500);
                 }
             }
@@ -969,30 +980,50 @@
             }
 
             function toggleClusters() {
-                if (!actualLayer) return;
+                if (!actualLayer || holeMarkers.length === 0) return;
                 
-                const isClustered = actualLayer.getLayers().some(layer => 
+                actualLayer.clearLayers();
+                
+                // Check if we were clustered by looking at the first layer
+                const wasClustered = actualLayer.getLayers().some(layer => 
                     layer instanceof L.MarkerClusterGroup
                 );
-
-                if (isClustered) {
-                    const newLayer = L.layerGroup();
-                    actualLayer.getLayers().forEach(clusterGroup => {
-                        if (clusterGroup instanceof L.MarkerClusterGroup) {
-                            clusterGroup.getLayers().forEach(marker => newLayer.addLayer(marker));
-                        }
-                    });
-                    actualLayer = newLayer;
-                    map.removeLayer(actualLayer);
-                    actualLayer.addTo(map);
+                
+                if (wasClustered) {
+                    // Add markers individually (no clustering)
+                    holeMarkers.forEach(marker => actualLayer.addLayer(marker));
                     console.log('Clustering disabled');
                 } else {
-                    const cluster = L.markerClusterGroup({ maxClusterRadius: 50 });
-                    actualLayer.getLayers().forEach(marker => cluster.addLayer(marker));
-                    actualLayer = L.layerGroup([cluster]);
-                    map.removeLayer(actualLayer);
-                    actualLayer.addTo(map);
+                    // Create new cluster group and add all markers
+                    const cluster = L.markerClusterGroup({ 
+                        maxClusterRadius: 50,
+                        chunkedLoading: true,
+                        spiderfyOnMaxZoom: true,
+                        showCoverageOnHover: false,
+                        zoomToBoundsOnClick: true
+                    });
+                    
+                    holeMarkers.forEach(marker => cluster.addLayer(marker));
+                    actualLayer.addLayer(cluster);
                     console.log('Clustering enabled');
+                }
+                
+                // Ensure layer is still on map
+                if (!map.hasLayer(actualLayer)) {
+                    actualLayer.addTo(map);
+                }
+            }
+
+            function ensureLayersVisible() {
+                // Make sure all layers are added to map
+                if (actualLayer && !map.hasLayer(actualLayer)) {
+                    actualLayer.addTo(map);
+                }
+                if (monitoringLayer && !map.hasLayer(monitoringLayer)) {
+                    monitoringLayer.addTo(map);
+                }
+                if (pitLayer && !map.hasLayer(pitLayer)) {
+                    pitLayer.addTo(map);
                 }
             }
 
