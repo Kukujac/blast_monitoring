@@ -2934,7 +2934,7 @@
                     container.innerHTML = '<div class="text-center text-gray-500 py-8">No data</div>';
                     return;
                 }
-
+            
                 // Create zoom/pan controls
                 const controls = document.createElement('div');
                 controls.className = 'chart-controls';
@@ -2944,7 +2944,7 @@
                     <button id="reset-horizontal">↺</button>
                 `;
                 container.appendChild(controls);
-
+            
                 const horizontalDeviations = holeData.map(h => ({
                     dx: parseFloat(h.properties.dx) || 0,
                     dy: parseFloat(h.properties.dy) || 0,
@@ -2958,35 +2958,35 @@
                     plannedEasting: h.planned.easting,
                     plannedNorthing: h.planned.northing
                 }));
-
+            
                 // Find max deviation to scale the chart properly
                 const maxDev = Math.max(...horizontalDeviations.map(d => Math.sqrt(d.dx*d.dx + d.dy*d.dy)));
                 // Use a scale that ensures all points fit within the chart
                 let chartMax = Math.max(0.4, maxDev * 1.1); // At least 0.4, or 10% larger than max deviation
-
+            
                 const totalHolesPlanned = holeData.length;
                 const totalHolesActual = holeData.filter(h => h.actual.elevation).length;
                 const holesWithin02 = holeData.filter(h => h.properties.in_spec_02).length;
                 const holesWithin04 = holeData.filter(h => h.properties.in_spec_04).length;
-
+            
                 document.getElementById('total-holes-horizontal-planned').textContent = totalHolesPlanned;
                 document.getElementById('total-holes-horizontal-actual').textContent = totalHolesActual;
                 document.getElementById('holes-within-0.2').textContent = holesWithin02;
                 document.getElementById('holes-within-0.4').textContent = holesWithin04;
                 document.getElementById('max-horizontal-deviation').textContent = maxDev.toFixed(2);
-
+            
                 const w = container.clientWidth;
                 const h = container.clientHeight;
                 let cx = w/2, cy = h/2;
                 let scale = Math.min(w, h) / (2 * chartMax) * 0.9;
                 let offsetX = 0, offsetY = 0;
                 let zoomLevel = 1;
-
+            
                 function drawChart() {
                     // Clear previous points and circles but keep controls
                     const points = container.querySelectorAll('.deviation-point, .deviation-circle, .deviation-target');
                     points.forEach(p => p.remove());
-
+            
                     // Create target circles
                     [0.2, 0.4].forEach((r, i) => {
                         if (r <= chartMax * zoomLevel) {
@@ -3000,19 +3000,19 @@
                             container.appendChild(circle);
                         }
                     });
-
+            
                     const target = document.createElement('div');
                     target.className = 'deviation-target';
                     target.style.left = (cx + offsetX) + 'px';
                     target.style.top = (cy + offsetY) + 'px';
                     container.appendChild(target);
-
+            
                     // Create tooltip element
                     let tooltip = document.createElement('div');
                     tooltip.className = 'deviation-tooltip';
                     tooltip.style.display = 'none';
                     container.appendChild(tooltip);
-
+            
                     // Plot each deviation point
                     horizontalDeviations.forEach(d => {
                         const x = cx + offsetX + d.dx * scale * zoomLevel;
@@ -3067,67 +3067,22 @@
                         }
                     });
                 }
-
+            
                 // Add zoom/pan functionality
                 let isDragging = false;
                 let lastX, lastY;
-
-                container.addEventListener('mousedown', (e) => {
-                    if (e.target === controls || e.target.closest('.chart-controls')) return;
-                    isDragging = true;
-                    lastX = e.clientX;
-                    lastY = e.clientY;
-                    container.style.cursor = 'grabbing';
-                });
-
-                container.addEventListener('mousemove', (e) => {
-                    if (!isDragging) return;
-                    if (e.target === controls || e.target.closest('.chart-controls')) return;
-                    
-                    const deltaX = e.clientX - lastX;
-                    const deltaY = e.clientY - lastY;
-                    
-                    offsetX += deltaX;
-                    offsetY += deltaY;
-                    
-                    lastX = e.clientX;
-                    lastY = e.clientY;
-                    
-                    drawChart();
-                });
-
-                container.addEventListener('mouseup', () => {
-                    isDragging = false;
-                    container.style.cursor = 'grab';
-                });
-
-                container.addEventListener('mouseleave', () => {
-                    isDragging = false;
-                    container.style.cursor = 'grab';
-                });
-
-                // Zoom controls
-                document.getElementById('zoom-in-horizontal').addEventListener('click', () => {
-                    zoomLevel *= 1.2;
-                    drawChart();
-                });
-
-                document.getElementById('zoom-out-horizontal').addEventListener('click', () => {
-                    zoomLevel /= 1.2;
-                    drawChart();
-                });
-
-                document.getElementById('reset-horizontal').addEventListener('click', () => {
-                    offsetX = 0;
-                    offsetY = 0;
-                    zoomLevel = 1;
-                    drawChart();
-                });
-
-                // Initial draw
-                drawChart();
-
-                // Add legend
+            
+                // Remove existing event listeners by cloning and replacing
+                const newContainer = container.cloneNode(false);
+                container.parentNode.replaceChild(newContainer, container);
+                
+                // Re-add the container to the global scope
+                const updatedContainer = document.getElementById('horizontal-deviation-chart');
+                
+                // Add back the controls
+                updatedContainer.appendChild(controls);
+                
+                // Re-add the legend if needed
                 const legend = document.createElement('div');
                 legend.style.position = 'absolute';
                 legend.style.bottom = '10px';
@@ -3154,7 +3109,73 @@
                         <span>Outside 0.4m (Critical)</span>
                     </div>
                 `;
-                container.appendChild(legend);
+                updatedContainer.appendChild(legend);
+            
+                // Event handlers
+                updatedContainer.addEventListener('mousedown', (e) => {
+                    if (e.target === controls || e.target.closest('.chart-controls')) return;
+                    isDragging = true;
+                    lastX = e.clientX;
+                    lastY = e.clientY;
+                    updatedContainer.style.cursor = 'grabbing';
+                });
+            
+                updatedContainer.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    if (e.target === controls || e.target.closest('.chart-controls')) return;
+                    
+                    const deltaX = e.clientX - lastX;
+                    const deltaY = e.clientY - lastY;
+                    
+                    offsetX += deltaX;
+                    offsetY += deltaY;
+                    
+                    lastX = e.clientX;
+                    lastY = e.clientY;
+                    
+                    drawChart();
+                });
+            
+                updatedContainer.addEventListener('mouseup', () => {
+                    isDragging = false;
+                    updatedContainer.style.cursor = 'grab';
+                });
+            
+                updatedContainer.addEventListener('mouseleave', () => {
+                    isDragging = false;
+                    updatedContainer.style.cursor = 'grab';
+                });
+            
+                // Initial draw
+                drawChart();
+            
+                // Attach zoom controls with fresh references
+                const zoomInBtn = document.getElementById('zoom-in-horizontal');
+                const zoomOutBtn = document.getElementById('zoom-out-horizontal');
+                const resetBtn = document.getElementById('reset-horizontal');
+            
+                if (zoomInBtn) {
+                    zoomInBtn.addEventListener('click', () => {
+                        zoomLevel *= 1.2;
+                        drawChart();
+                    });
+                }
+            
+                if (zoomOutBtn) {
+                    zoomOutBtn.addEventListener('click', () => {
+                        zoomLevel /= 1.2;
+                        drawChart();
+                    });
+                }
+            
+                if (resetBtn) {
+                    resetBtn.addEventListener('click', () => {
+                        offsetX = 0;
+                        offsetY = 0;
+                        zoomLevel = 1;
+                        drawChart();
+                    });
+                }
             }
 
             // ============================================
