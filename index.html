@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blast Data Monitoring Dashboard - Ghana</title>
+    <title>Blast Data Monitoring Dashboard</title>
     
     <!-- Favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💣</text></svg>">
+    <link rel="icon" href="icons/blast.png" type="image/png">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -1112,7 +1112,7 @@
                 const baseMaps = {
                     "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         maxZoom: 23,
-                        attribution: '&copy; OpenStreetMap'
+                        attribution: '&copy; <a style="color:Red;">Prince Charles Devs</a>'
                     }),
                     "Satellite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                         maxZoom: 23,
@@ -1496,9 +1496,31 @@
                 }
             }
 
+            // Function to get the current blast number for filtering
+            function getCurrentBlastNumber() {
+                const selector = document.getElementById('data-source-selector');
+                if (!selector) return '';
+                
+                const selectedOption = selector.options[selector.selectedIndex].text;
+                return selectedOption.trim();
+            }
+
+            // Function to filter data by blast number
+            function filterDataByBlastNumber(data, blastNumber) {
+                if (!blastNumber || !data) return [];
+                
+                return data.filter(item => {
+                    const shotNumber = item.properties?.shot_number || '';
+                    return shotNumber.includes(blastNumber);
+                });
+            }
+
             async function loadHoleData() {
                 try {
                     console.log('Loading hole data from table:', currentTable);
+                    
+                    const blastNumber = getCurrentBlastNumber();
+                    console.log('Current blast number:', blastNumber);
                     
                     const { data, error } = await supabaseClient
                         .from(currentTable)
@@ -1522,6 +1544,9 @@
                     
                     if (error) throw error;
                     
+                    // Filter hole data to only include records matching the selected blast number
+                    // Note: This assumes hole data has a blast_number field or similar relationship
+                    // If not, you may need to adjust this logic based on your actual data structure
                     holeData = (data || [])
                         .filter(row => {
                             const dev = parseFloat(row.hole_deviation) || 0;
@@ -1558,12 +1583,13 @@
                                     dx: row.dx, dy: row.dy, dz: row.dz,
                                     hole_deviation: row.hole_deviation,
                                     in_spec_02: row.in_spec_02,
-                                    in_spec_04: row.in_spec_04
+                                    in_spec_04: row.in_spec_04,
+                                    blast_number: blastNumber // Add blast number to properties
                                 }
                             };
                         });
                     
-                    console.log(`Processed ${holeData.length} holes`);
+                    console.log(`Processed ${holeData.length} holes for blast ${blastNumber}`);
                     populateHoleTable();
                     plotHoleData();
                     createCharts();
@@ -1583,6 +1609,9 @@
                 try {
                     console.log('Loading monitoring data...');
                     
+                    const blastNumber = getCurrentBlastNumber();
+                    console.log('Current blast number:', blastNumber);
+                    
                     const { data, error } = await supabaseClient
                         .from('blasting_monitoring')
                         .select(`
@@ -1596,55 +1625,67 @@
                     
                     if (error) throw error;
                     
-                    monitoringData = (data || []).map(row => {
-                        let easting = null, northing = null;
-                        let wgs84 = null;
-                        
-                        if (row.geom) {
-                            try {
-                                const geom = typeof row.geom === 'string' ? 
-                                    JSON.parse(row.geom) : row.geom;
-                                if (geom && geom.coordinates) {
-                                    easting = geom.coordinates[0];
-                                    northing = geom.coordinates[1];
-                                    
-                                    if (easting && northing) {
-                                        wgs84 = utmToWgs84(easting, northing);
+                    // Filter monitoring data by the selected blast number
+                    monitoringData = (data || [])
+                        .filter(row => {
+                            const shotNumber = row.shot_number || '';
+                            return shotNumber.includes(blastNumber);
+                        })
+                        .map(row => {
+                            let easting = null, northing = null;
+                            let wgs84 = null;
+                            
+                            if (row.geom) {
+                                try {
+                                    const geom = typeof row.geom === 'string' ? 
+                                        JSON.parse(row.geom) : row.geom;
+                                    if (geom && geom.coordinates) {
+                                        easting = geom.coordinates[0];
+                                        northing = geom.coordinates[1];
+                                        
+                                        if (easting && northing) {
+                                            wgs84 = utmToWgs84(easting, northing);
+                                        }
                                     }
+                                } catch (e) {
+                                    console.warn('Error parsing monitoring geometry:', e);
                                 }
-                            } catch (e) {
-                                console.warn('Error parsing monitoring geometry:', e);
                             }
-                        }
-                        
-                        return {
-                            wgs84: wgs84,
-                            properties: {
-                                date: row.blast_date, 
-                                time: row.blast_time || '',
-                                location: row.monitoring_point || 'Unknown',
-                                shot_number: row.shot_number,
-                                ppv: parseFloat(row.ppv_actual) || 0,
-                                pspl: parseFloat(row.pspl_actual) || 0,
-                                distance: parseFloat(row.distance_m) || 0,
-                                weather: row.weather_conditions || 'Unknown',
-                                rock_type: row.rock_type || 'Unknown',
-                                charge: parseFloat(row.cooperate_charge_kg) || 0,
-                                burden: parseFloat(row.burden) || 0,
-                                spacing: parseFloat(row.spacing) || 0,
-                                drill_depth: parseFloat(row.drill_depth) || 0,
-                                holes_design: parseFloat(row.holes_design) || 0,
-                                holes_actual: parseFloat(row.holes_actual) || 0,
-                                volume_actual: parseFloat(row.actual_volume) || 0,
-                                volume_planned: parseFloat(row.planned_volume) || 0,
-                                status: calculateStatus(parseFloat(row.ppv_actual) || 0, parseFloat(row.pspl_actual) || 0)
-                            }
-                        };
-                    });
+                            
+                            return {
+                                wgs84: wgs84,
+                                properties: {
+                                    date: row.blast_date, 
+                                    time: row.blast_time || '',
+                                    location: row.monitoring_point || 'Unknown',
+                                    shot_number: row.shot_number,
+                                    ppv: parseFloat(row.ppv_actual) || 0,
+                                    pspl: parseFloat(row.pspl_actual) || 0,
+                                    distance: parseFloat(row.distance_m) || 0,
+                                    weather: row.weather_conditions || 'Unknown',
+                                    rock_type: row.rock_type || 'Unknown',
+                                    charge: parseFloat(row.cooperate_charge_kg) || 0,
+                                    burden: parseFloat(row.burden) || 0,
+                                    spacing: parseFloat(row.spacing) || 0,
+                                    drill_depth: parseFloat(row.drill_depth) || 0,
+                                    holes_design: parseFloat(row.holes_design) || 0,
+                                    holes_actual: parseFloat(row.holes_actual) || 0,
+                                    volume_actual: parseFloat(row.actual_volume) || 0,
+                                    volume_planned: parseFloat(row.planned_volume) || 0,
+                                    status: calculateStatus(parseFloat(row.ppv_actual) || 0, parseFloat(row.pspl_actual) || 0),
+                                    blast_number: blastNumber
+                                }
+                            };
+                        });
                     
-                    console.log(`Processed ${monitoringData.length} monitoring records`);
+                    console.log(`Processed ${monitoringData.length} monitoring records for blast ${blastNumber}`);
                     populateMonitoringTable();
                     plotMonitoringData();
+                    createCharts(); // Recreate charts with filtered data
+                    
+                    if (monitoringData.length === 0) {
+                        showNotification(`No monitoring data found for blast ${blastNumber}`, 'info');
+                    }
                     
                 } catch (error) {
                     console.error('Error loading monitoring data:', error);
@@ -1804,7 +1845,7 @@
                     setTimeout(() => {
                         fitAllData();
                         hasFittedBounds = true;
-                    }, 500);
+                    }, 1000);
                 }
             }
 
@@ -1838,6 +1879,7 @@
                                 <p><b>PPV:</b> ${item.properties.ppv.toFixed(2)} mm/s</p>
                                 <p><b>PSPL:</b> ${item.properties.pspl.toFixed(1)} dB</p>
                                 <p><b>Status:</b> ${item.properties.status}</p>
+                                <p><b>Blast:</b> ${item.properties.blast_number}</p>
                             </div>
                         `);
                         
@@ -2016,7 +2058,7 @@
                 const baseMaps = {
                     "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         maxZoom: 23,
-                        attribution: '&copy; OpenStreetMap'
+                        attribution: '&copy; <a style="color:Red;">Prince Charles Devs</a>'
                     }),
                     "Satellite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                         maxZoom: 23,
@@ -2076,7 +2118,7 @@
                 tbody.innerHTML = '';
                 
                 if (holeData.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="9" class="px-4 py-4 text-center text-gray-500">No data available</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="9" class="px-4 py-4 text-center text-gray-500">No data available for selected blast</td></tr>';
                     return;
                 }
                 
@@ -2109,7 +2151,7 @@
                 tbody.innerHTML = '';
                 
                 if (monitoringData.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center text-gray-500">No monitoring data</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center text-gray-500">No monitoring data for selected blast</td></tr>';
                     return;
                 }
                 
@@ -2416,7 +2458,7 @@
                 const ppvData = monitoringData.map(item => item.properties.ppv);
                 
                 // Get blast pattern for title
-                const blastPattern = monitoringData[0]?.properties.shot_number || 'Current Blast';
+                const blastNumber = getCurrentBlastNumber();
                 
                 // Find min and max for better y-axis scaling
                 const maxPPV = Math.max(...ppvData, 2.0) * 1.1; // Add 10% padding
@@ -2466,7 +2508,7 @@
                         plugins: {
                             title: {
                                 display: true,
-                                text: `Peak Particle Velocity (mm/s) - ${blastPattern}`,
+                                text: `Peak Particle Velocity (mm/s) - ${blastNumber}`,
                                 font: { size: 12, weight: 'normal' },
                                 padding: { bottom: 20 }
                             },
@@ -2565,10 +2607,6 @@
                 
                 const locations = monitoringData.map(item => item.properties.location);
                 const psplData = monitoringData.map(item => item.properties.pspl);
-                
-                // Find min and max for better y-axis scaling
-                const minPSPL = Math.min(80, ...psplData) - 5;
-                const maxPSPL = Math.max(120, ...psplData) + 5;
                 
                 charts.psplChart = new Chart(ctx, {
                     type: 'bar',
@@ -3123,8 +3161,10 @@
             // UTILITY FUNCTIONS
             // ============================================
             function updateBlastInfo() {
+                const blastNumber = getCurrentBlastNumber();
+                
                 if (holeData.length === 0) {
-                    document.getElementById('blast-number').textContent = "No Data";
+                    document.getElementById('blast-number').textContent = blastNumber || "No Data";
                     document.getElementById('bench-level').textContent = "No Data";
                     document.getElementById('planned-holes').textContent = "0";
                     document.getElementById('actual-holes').textContent = "0";
@@ -3168,7 +3208,7 @@
                 const percentOutside02 = totalHoles > 0 ? (100 - percentWithin02).toFixed(1) : 0;
                 const percentOutside04 = totalHoles > 0 ? (100 - percentWithin04).toFixed(1) : 0;
 
-                document.getElementById('blast-number').textContent = currentTable.replace('hole_data', '').replace(/_/g, ' ').toUpperCase() || 'BN# 8';
+                document.getElementById('blast-number').textContent = blastNumber || 'BN# 8';
                 document.getElementById('bench-level').textContent = (holeData[0]?.design.elevation || 0) + "mRL";
                 document.getElementById('planned-holes').textContent = totalHoles;
                 document.getElementById('actual-holes').textContent = actualHolesCount;
