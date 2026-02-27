@@ -1090,11 +1090,46 @@
                     "Monitoring Points": monitoringLayer,
                     "Pit Boundaries": pitLayer
                 };
+
+                // Add layer control with base maps
+                const layerControl = L.control.layers(baseMaps, overlayMaps, { 
+                    collapsed: false, 
+                    position: 'topright' 
+                }).addTo(map);
                 
-                L.control.layers(baseMaps, overlayMaps, { collapsed: false, position: 'topright' }).addTo(map);
+                // Ensure only Actual Positions is checked by default
+                // This needs to happen after layers are added to the map
+                setTimeout(() => {
+                    // Remove all layers from map first
+                    if (designLayer) map.removeLayer(designLayer);
+                    if (plannedLayer) map.removeLayer(plannedLayer);
+                    if (monitoringLayer) map.removeLayer(monitoringLayer);
+                    if (pitLayer) map.removeLayer(pitLayer);
+                    
+                    // Add only actualLayer to map
+                    if (actualLayer) map.addLayer(actualLayer);
+                    
+                    // Update the layer control to reflect the current state
+                    // This is a bit hacky but necessary to sync the checkboxes
+                    const layerControls = document.querySelectorAll('.leaflet-control-layers-selector');
+                    if (layerControls.length >= 5) {
+                        // Actual Positions checkbox (first one) - keep checked
+                        layerControls[0].checked = true;
+                        // Design Positions checkbox - uncheck
+                        layerControls[1].checked = false;
+                        // Planned Positions checkbox - uncheck
+                        layerControls[2].checked = false;
+                        // Monitoring Points checkbox - uncheck
+                        layerControls[3].checked = false;
+                        // Pit Boundaries checkbox - uncheck
+                        layerControls[4].checked = false;
+                    }
+                }, 1000); // Delay to ensure layers are created
                 
                 addMapControls();
                 addLegend();
+
+                
                 
                 // Add measurement control
                 L.control.measure({
