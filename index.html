@@ -1236,7 +1236,10 @@
                         .from('pit_boundaries')
                         .select('name, geom');
                     
-                    if (error) throw error;
+                    if (error) {
+                        console.error('Supabase error:', error);
+                        throw error;
+                    }
                     
                     if (pitLayer) pitLayer.clearLayers();
                     
@@ -1245,79 +1248,173 @@
                         return;
                     }
                     
-                    // Transform each feature from UTM 32630 to WGS84
-                    const transformedFeatures = data.map(row => {
-                        // Parse the geometry if it's a string
-                        const geom = typeof row.geom === 'string' ? JSON.parse(row.geom) : row.geom;
-                        
-                        if (!geom || !geom.coordinates) return null;
-                        
-                        // Handle different geometry types (Polygon, MultiPolygon)
-                        if (geom.type === 'Polygon') {
-                            // Transform each ring of the polygon
-                            const transformedCoords = geom.coordinates.map(ring => {
-                                return ring.map(coord => {
-                                    const wgs84 = utmToWgs84(coord[0], coord[1]);
-                                    return wgs84 ? [wgs84.lon, wgs84.lat] : coord;
-                                });
-                            });
+                    console.log('Raw pit data:', data);
+                    
+                    // Process each feature
+                    const transformedFeatures = [];
+                    
+                    data.forEach(row => {
+                        try {
+                            // Parse the geometry if it's a string
+                            const geom = typeof row.geom === 'string' ? JSON.parse(row.geom) : row.geom;
                             
-                            return {
-                                type: "Feature",
-                                geometry: {
-                                    type: "Polygon",
-                                    coordinates: transformedCoords
-                                },
-                                properties: { name: row.name }
-                            };
-                        } 
-                        else if (geom.type === 'MultiPolygon') {
-                            // Transform each polygon in the multipolygon
-                            const transformedCoords = geom.coordinates.map(polygon => {
-                                return polygon.map(ring => {
+                            if (!geom || !geom.coordinates) {
+                                console.warn('Invalid geometry for pit:', row);
+                                return;
+                            }
+                            
+                            console.log('Processing pit geometry type:', geom.type);
+                            
+                            let transformedCoords;
+                            
+                            // Handle different geometry types
+                            if (geom.type === 'Polygon') {
+                                // Transform each ring of the polygon
+                                transformedCoords = geom.coordinates.map(ring => {
                                     return ring.map(coord => {
                                         const wgs84 = utmToWgs84(coord[0], coord[1]);
                                         return wgs84 ? [wgs84.lon, wgs84.lat] : coord;
                                     });
                                 });
-                            });
-                            
-                            return {
-                                type: "Feature",
-                                geometry: {
-                                    type: "MultiPolygon",
-                                    coordinates: transformedCoords
-                                },
-                                properties: { name: row.name }
-                            };
+                                
+                                transformedFeatures.push({
+                                    type: "Feature",
+                                    geometry: {
+                                        type: "Polygon",
+                                        coordinates: transformedCoords
+                                    },
+                                    properties: { name: row.name }
+                                });
+                            } 
+                            else if (geom.type === 'MultiPolygon') {
+                                // Transform each polygon in the multipolygon
+                                transformedCoords = geom.coordinates.map(polygon => {
+                                    return polygon.map(ring => {
+                                        return ring.map(coord => {
+                                            const wgs84 = utmToWgs84(coord[0], coord[1]);
+                                            return wgs84 ? [wgs84.lon, wgs84.lat] : coord;
+                                        });
+                                    });
+                                });
+                                
+                                transformedFeatures.push({
+                                    type: "Feature",
+                                    geometry: {
+                                        type: "MultiPolygon",
+                                        coordinates: transformedCoords
+                                    },
+                                    properties: { name: row.name }
+                                });
+                            }
+                            else if (geom.type === 'LineString') {
+                                // Transform each point in the line
+                                transformedCoords = geom.coordinates.map(coord => {
+                                    const wgs84 = utmToWgs84(coord[0], coord[1]);
+                                    return wgs84 ? [wgs84.lon, wgs84.lat] : coord;
+                                });
+                                
+                                transformedFeatures.push({
+                                    type: "Feature",
+                                    geometry: {
+                                        type: "LineString",
+                                        coordinates: transformedCoords
+                                    },
+                                    properties: { name: row.name }
+                                });
+                            }
+                            else if (geom.type === 'MultiLineString') {
+                                // Transform each line in the multilinestring
+                                transformedCoords = geom.coordinates.map(line => {
+                                    return line.map(coord => {
+                                        const wgs84 = utmToWgs84(coord[0], coord[1]);
+                                        return wgs84 ? [wgs84.lon, wgs84.lat] : coord;
+                                    });
+                                });
+                                
+                                transformedFeatures.push({
+                                    type: "Feature",
+                                    geometry: {
+                                        type: "MultiLineString",
+                                        coordinates: transformedCoords
+                                    },
+                                    properties: { name: row.name }
+                                });
+                            }
+                            else if (geom.type === 'Point') {
+                                // Transform single point
+                                const wgs84 = utmToWgs84(geom.coordinates[0], geom.coordinates[1]);
+                                if (wgs84) {
+                                    transformedCoords = [wgs84.lon, wgs84.lat];
+                                    
+                                    transformedFeatures.push({
+                                        type: "Feature",
+                                        geometry: {
+                                            type: "Point",
+                                            coordinates: transformedCoords
+                                        },
+                                        properties: { name: row.name }
+                                    });
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Error processing pit feature:', e, row);
                         }
-                        
-                        return null;
-                    }).filter(f => f !== null);
+                    });
+                    
+                    console.log(`Transformed ${transformedFeatures.length} pit features`);
                     
                     if (transformedFeatures.length > 0) {
-                        L.geoJSON(transformedFeatures, {
-                            style: {
-                                color: '#555', 
-                                weight: 2, 
-                                fillColor: '#888',
-                                fillOpacity: 0.3, 
-                                dashArray: '5, 5'
+                        // Create appropriate styles based on geometry type
+                        const geoJsonLayer = L.geoJSON(transformedFeatures, {
+                            style: function(feature) {
+                                // Different styles for different geometry types
+                                if (feature.geometry.type === 'LineString' || feature.geometry.type === 'MultiLineString') {
+                                    return {
+                                        color: '#555',
+                                        weight: 3,
+                                        opacity: 0.8
+                                    };
+                                } else if (feature.geometry.type === 'Point') {
+                                    return {
+                                        color: '#555',
+                                        fillColor: '#888',
+                                        fillOpacity: 0.5,
+                                        radius: 8
+                                    };
+                                } else {
+                                    // Polygon/MultiPolygon style with hatch pattern
+                                    return {
+                                        color: '#555',
+                                        weight: 2,
+                                        fillColor: '#888',
+                                        fillOpacity: 0.3,
+                                        dashArray: '5, 5'
+                                    };
+                                }
+                            },
+                            pointToLayer: function(feature, latlng) {
+                                return L.circleMarker(latlng, {
+                                    color: '#555',
+                                    fillColor: '#888',
+                                    fillOpacity: 0.5,
+                                    radius: 8
+                                });
                             },
                             onEachFeature: (feature, layer) => {
-                                if (feature.properties.name) {
+                                if (feature.properties && feature.properties.name) {
                                     layer.bindPopup(`<b>${feature.properties.name}</b>`);
                                 }
                             }
-                        }).addTo(pitLayer);
+                        });
                         
+                        geoJsonLayer.addTo(pitLayer);
                         pitLayer.addTo(map);
-                        console.log(`Loaded and transformed ${transformedFeatures.length} pit boundaries`);
+                        console.log('Pit layer added to map');
                     }
                     
                 } catch (error) {
                     console.error('Error loading pit data:', error);
-                    showNotification('Failed to load pit boundaries', 'error');
+                    showNotification('Failed to load pit boundaries: ' + error.message, 'error');
                 }
             }
 
