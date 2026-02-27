@@ -17,6 +17,9 @@
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
+    <!-- Proj4js for coordinate transformation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+    
     <!-- Leaflet Marker Clustering -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
@@ -158,7 +161,7 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(5px);
             padding: 8px;
-            width: 140px;
+            width: 160px;
             z-index: 1000;
         }
 
@@ -181,6 +184,21 @@
 
         .map-controls button:hover {
             background-color: #bfdbfe;
+        }
+
+        .map-controls .toggle-switch {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 8px;
+            padding: 4px 6px;
+            background-color: #e5e7eb;
+            border-radius: 4px;
+            font-size: 10px;
+        }
+
+        .map-controls .toggle-switch input {
+            margin-right: 4px;
         }
 
         .map-controls button:last-child {
@@ -384,18 +402,15 @@
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hole ID</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Latitude</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Longitude</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Easting (UTM)</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Northing (UTM)</th>
                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Elevation</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DX</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DY</th>
-                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DZ</th>
                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deviation</th>
                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             </tr>
                         </thead>
                         <tbody id="hole-data-body" class="bg-white divide-y divide-gray-200">
-                            <tr><td colspan="9" class="px-4 py-4 text-center text-gray-500">Loading data...</td></tr>
+                            <tr><td colspan="6" class="px-4 py-4 text-center text-gray-500">Loading data...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -546,6 +561,24 @@
             });
 
             // ============================================
+            // COORDINATE TRANSFORMATION - UTM zone 30N (Ghana) to WGS84
+            // ============================================
+            proj4.defs("EPSG:32630", "+proj=utm +zone=30 +ellps=WGS84 +datum=WGS84 +units=m +no_defs +type=crs");
+            
+            function utmToWgs84(easting, northing) {
+                try {
+                    if (!easting || !northing || isNaN(easting) || isNaN(northing)) {
+                        return null;
+                    }
+                    const result = proj4("EPSG:32630", "EPSG:4326", [easting, northing]);
+                    return { lat: result[1], lon: result[0] };
+                } catch (error) {
+                    console.error('Error transforming coordinates:', error);
+                    return null;
+                }
+            }
+
+            // ============================================
             // GLOBAL VARIABLES
             // ============================================
             let holeData = [];
@@ -560,10 +593,12 @@
             
             // Store markers for toggling
             let holeMarkers = [];
-            // Track clustering state
+            let monitoringMarkers = [];
+            
+            // Track states
             let clusteringEnabled = true;
-            // Track if fit bounds has been called
             let hasFittedBounds = false;
+            let transformEnabled = true; // true = WGS84, false = UTM (raw)
 
             // ============================================
             // INITIALIZATION
@@ -662,6 +697,16 @@
                         <button id="toggle-cluster-btn" class="w-full bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs p-2 rounded mb-2">
                             <i class="fas fa-object-group mr-1"></i>Toggle Clustering
                         </button>
+                        <div class="toggle-switch">
+                            <span>Coordinate System:</span>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="transform-toggle" checked class="mr-1">
+                                <span>WGS84</span>
+                            </label>
+                        </div>
+                        <div class="text-xs text-gray-600 mt-1 text-center">
+                            <span id="coord-display">Showing: WGS84 (transformed)</span>
+                        </div>
                     `;
                     L.DomEvent.disableClickPropagation(div);
                     return div;
@@ -770,21 +815,13 @@
                             return dev > 0 && actEl > 0;
                         })
                         .map(row => {
-                            // Extract WGS84 coordinates from geom_actual if available
-                            let lat = null, lon = null;
-                            if (row.geom_actual) {
-                                try {
-                                    // Parse the geometry which should be in WGS84
-                                    const geom = typeof row.geom_actual === 'string' ? 
-                                        JSON.parse(row.geom_actual) : row.geom_actual;
-                                    if (geom && geom.coordinates) {
-                                        // GeoJSON coordinates are [lon, lat]
-                                        lon = geom.coordinates[0];
-                                        lat = geom.coordinates[1];
-                                    }
-                                } catch (e) {
-                                    console.warn('Error parsing geometry:', e);
-                                }
+                            // Store both raw UTM and transformed WGS84 coordinates
+                            const easting = parseFloat(row.actual_easting);
+                            const northing = parseFloat(row.actual_northing);
+                            
+                            let wgs84 = null;
+                            if (!isNaN(easting) && !isNaN(northing) && easting > 0 && northing > 0) {
+                                wgs84 = utmToWgs84(easting, northing);
                             }
                             
                             return {
@@ -798,15 +835,15 @@
                                     hole_deviation: row.hole_deviation,
                                     in_spec_02: row.in_spec_02,
                                     in_spec_04: row.in_spec_04,
-                                    latitude: lat,
-                                    longitude: lon
+                                    utm: { easting, northing },
+                                    wgs84: wgs84
                                 }
                             };
                         });
                     
                     console.log(`Processed ${holeData.length} holes`);
                     populateHoleTable();
-                    plotHoleData();
+                    plotData(); // Plot with current transform setting
                     createCharts();
                     createHorizontalDeviationChart();
                     createVerticalDeviationChart();
@@ -837,16 +874,21 @@
                     if (error) throw error;
                     
                     monitoringData = (data || []).map(row => {
-                        // Extract WGS84 coordinates from geom
-                        let lat = null, lon = null;
+                        // Extract coordinates from geom
+                        let easting = null, northing = null;
+                        let wgs84 = null;
+                        
                         if (row.geom) {
                             try {
                                 const geom = typeof row.geom === 'string' ? 
                                     JSON.parse(row.geom) : row.geom;
                                 if (geom && geom.coordinates) {
-                                    // GeoJSON coordinates are [lon, lat]
-                                    lon = geom.coordinates[0];
-                                    lat = geom.coordinates[1];
+                                    easting = geom.coordinates[0];
+                                    northing = geom.coordinates[1];
+                                    
+                                    if (easting && northing) {
+                                        wgs84 = utmToWgs84(easting, northing);
+                                    }
                                 }
                             } catch (e) {
                                 console.warn('Error parsing monitoring geometry:', e);
@@ -854,8 +896,8 @@
                         }
                         
                         return {
-                            latitude: lat,
-                            longitude: lon,
+                            utm: { easting, northing },
+                            wgs84: wgs84,
                             properties: {
                                 date: row.blast_date, 
                                 time: row.blast_time || '',
@@ -874,7 +916,7 @@
                     
                     console.log(`Processed ${monitoringData.length} monitoring records`);
                     populateMonitoringTable();
-                    plotMonitoringData();
+                    plotData(); // Plot with current transform setting
                     
                 } catch (error) {
                     console.error('Error loading monitoring data:', error);
@@ -884,8 +926,13 @@
             }
 
             // ============================================
-            // PLOTTING FUNCTIONS - Using WGS84 directly
+            // PLOTTING FUNCTIONS
             // ============================================
+            function plotData() {
+                plotHoleData();
+                plotMonitoringData();
+            }
+
             function plotHoleData() {
                 if (!actualLayer) return;
                 
@@ -896,12 +943,44 @@
                     const props = hole.properties;
                     const deviation = parseFloat(props.hole_deviation) || 0;
                     
-                    // Use WGS84 coordinates directly from the database
-                    const lat = props.latitude;
-                    const lon = props.longitude;
+                    let lat, lon;
+                    let coordSystem = '';
+                    
+                    if (transformEnabled && props.wgs84) {
+                        // Use transformed WGS84 coordinates
+                        lat = props.wgs84.lat;
+                        lon = props.wgs84.lon;
+                        coordSystem = 'WGS84';
+                    } else if (props.utm.easting && props.utm.northing) {
+                        // Use raw UTM coordinates (for display only - can't plot UTM directly on map)
+                        // We need to transform for actual plotting
+                        console.warn('Cannot plot UTM directly - transforming to WGS84');
+                        if (props.wgs84) {
+                            lat = props.wgs84.lat;
+                            lon = props.wgs84.lon;
+                        } else {
+                            return; // Skip if no valid coordinates
+                        }
+                    } else {
+                        return; // Skip if no coordinates
+                    }
                     
                     if (lat && lon && !isNaN(lat) && !isNaN(lon) && 
                         lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+                        
+                        const popupContent = transformEnabled ? 
+                            `<div class="text-sm">
+                                <h3 class="font-bold mb-1">Hole ${props.hole_id}</h3>
+                                <p><b>Deviation:</b> ${deviation.toFixed(2)}m</p>
+                                <p><b>WGS84:</b> ${lat.toFixed(6)}°N, ${lon.toFixed(6)}°E</p>
+                                <p><b>UTM (32630):</b> ${props.utm.easting.toFixed(2)}E, ${props.utm.northing.toFixed(2)}N</p>
+                            </div>` :
+                            `<div class="text-sm">
+                                <h3 class="font-bold mb-1">Hole ${props.hole_id}</h3>
+                                <p><b>Deviation:</b> ${deviation.toFixed(2)}m</p>
+                                <p><b>UTM (32630):</b> ${props.utm.easting.toFixed(2)}E, ${props.utm.northing.toFixed(2)}N</p>
+                                <p><b>WGS84:</b> ${lat.toFixed(6)}°N, ${lon.toFixed(6)}°E</p>
+                            </div>`;
                         
                         const marker = L.circleMarker([lat, lon], {
                             color: '#3333ff',
@@ -909,14 +988,7 @@
                             fillOpacity: 0.7,
                             radius: 6,
                             weight: 2
-                        }).bindPopup(`
-                            <div class="text-sm">
-                                <h3 class="font-bold mb-1">Hole ${props.hole_id}</h3>
-                                <p><b>Deviation:</b> ${deviation.toFixed(2)}m</p>
-                                <p><b>WGS84:</b> ${lat.toFixed(6)}°N, ${lon.toFixed(6)}°E</p>
-                                <p><b>UTM:</b> ${Number(props.actual_easting || 0).toFixed(2)}E, ${Number(props.actual_northing || 0).toFixed(2)}N</p>
-                            </div>
-                        `);
+                        }).bindPopup(popupContent);
                         
                         holeMarkers.push(marker);
                     }
@@ -945,7 +1017,7 @@
                     
                     actualLayer.addTo(map);
                     
-                    console.log(`Plotted ${holeMarkers.length} hole markers using WGS84 coordinates`);
+                    console.log(`Plotted ${holeMarkers.length} hole markers (${transformEnabled ? 'WGS84' : 'UTM'} mode)`);
                     
                     if (!hasFittedBounds) {
                         setTimeout(() => {
@@ -960,12 +1032,21 @@
                 if (!monitoringLayer) return;
                 
                 monitoringLayer.clearLayers();
-                
-                let count = 0;
+                monitoringMarkers = [];
                 
                 monitoringData.forEach(item => {
-                    const lat = item.latitude;
-                    const lon = item.longitude;
+                    let lat, lon;
+                    
+                    if (transformEnabled && item.wgs84) {
+                        lat = item.wgs84.lat;
+                        lon = item.wgs84.lon;
+                    } else if (item.wgs84) {
+                        // Still need to plot on map - use WGS84 but show UTM in popup
+                        lat = item.wgs84.lat;
+                        lon = item.wgs84.lon;
+                    } else {
+                        return; // Skip if no coordinates
+                    }
                     
                     if (lat && lon && !isNaN(lat) && !isNaN(lon) &&
                         lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
@@ -974,7 +1055,25 @@
                         if (item.properties.status === 'Warning') color = '#ffcc00';
                         if (item.properties.status === 'Critical') color = '#ff4444';
                         
-                        count++;
+                        const popupContent = transformEnabled ?
+                            `<div class="text-sm">
+                                <h3 class="font-bold mb-1">${item.properties.location}</h3>
+                                <p><b>Date:</b> ${item.properties.date}</p>
+                                <p><b>PPV:</b> ${item.properties.ppv.toFixed(2)} mm/s</p>
+                                <p><b>PSPL:</b> ${item.properties.pspl.toFixed(1)} dB</p>
+                                <p><b>Status:</b> ${item.properties.status}</p>
+                                <p><b>WGS84:</b> ${lat.toFixed(6)}°N, ${lon.toFixed(6)}°E</p>
+                                <p><b>UTM (32630):</b> ${item.utm.easting?.toFixed(2) || 'N/A'}E, ${item.utm.northing?.toFixed(2) || 'N/A'}N</p>
+                            </div>` :
+                            `<div class="text-sm">
+                                <h3 class="font-bold mb-1">${item.properties.location}</h3>
+                                <p><b>Date:</b> ${item.properties.date}</p>
+                                <p><b>PPV:</b> ${item.properties.ppv.toFixed(2)} mm/s</p>
+                                <p><b>PSPL:</b> ${item.properties.pspl.toFixed(1)} dB</p>
+                                <p><b>Status:</b> ${item.properties.status}</p>
+                                <p><b>UTM (32630):</b> ${item.utm.easting?.toFixed(2) || 'N/A'}E, ${item.utm.northing?.toFixed(2) || 'N/A'}N</p>
+                                <p><b>WGS84:</b> ${lat.toFixed(6)}°N, ${lon.toFixed(6)}°E</p>
+                            </div>`;
                         
                         const marker = L.circleMarker([lat, lon], {
                             color: color,
@@ -982,25 +1081,32 @@
                             radius: 6,
                             fillOpacity: 0.8,
                             weight: 2
-                        }).bindPopup(`
-                            <div class="text-sm">
-                                <h3 class="font-bold mb-1">${item.properties.location}</h3>
-                                <p><b>Date:</b> ${item.properties.date}</p>
-                                <p><b>PPV:</b> ${item.properties.ppv.toFixed(2)} mm/s</p>
-                                <p><b>PSPL:</b> ${item.properties.pspl.toFixed(1)} dB</p>
-                                <p><b>Status:</b> ${item.properties.status}</p>
-                                <p><b>WGS84:</b> ${lat.toFixed(6)}°N, ${lon.toFixed(6)}°E</p>
-                            </div>
-                        `);
+                        }).bindPopup(popupContent);
                         
+                        monitoringMarkers.push(marker);
                         monitoringLayer.addLayer(marker);
                     }
                 });
                 
-                if (count > 0) {
+                if (monitoringMarkers.length > 0) {
                     monitoringLayer.addTo(map);
-                    console.log(`Plotted ${count} monitoring markers using WGS84 coordinates`);
+                    console.log(`Plotted ${monitoringMarkers.length} monitoring markers (${transformEnabled ? 'WGS84' : 'UTM'} mode)`);
                 }
+            }
+
+            function toggleTransformation() {
+                transformEnabled = !transformEnabled;
+                
+                // Update display text
+                const coordDisplay = document.getElementById('coord-display');
+                if (coordDisplay) {
+                    coordDisplay.textContent = `Showing: ${transformEnabled ? 'WGS84 (transformed)' : 'UTM (raw)'}`;
+                }
+                
+                // Redraw all data with new setting
+                plotData();
+                
+                console.log(`Transformation toggled: ${transformEnabled ? 'WGS84' : 'UTM'} mode`);
             }
 
             function fitAllData() {
@@ -1141,7 +1247,7 @@
                 if (actualLayer && !map.hasLayer(actualLayer) && holeMarkers.length > 0) {
                     actualLayer.addTo(map);
                 }
-                if (monitoringLayer && !map.hasLayer(monitoringLayer) && monitoringLayer.getLayers().length > 0) {
+                if (monitoringLayer && !map.hasLayer(monitoringLayer) && monitoringMarkers.length > 0) {
                     monitoringLayer.addTo(map);
                 }
                 if (pitLayer && !map.hasLayer(pitLayer) && pitLayer.getLayers().length > 0) {
@@ -1159,7 +1265,7 @@
                 tbody.innerHTML = '';
                 
                 if (holeData.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="9" class="px-4 py-4 text-center text-gray-500">No data available</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-4 text-center text-gray-500">No data available</td></tr>';
                     return;
                 }
                 
@@ -1172,12 +1278,9 @@
                     tbody.innerHTML += `
                         <tr>
                             <td class="px-4 py-3">${p.hole_id || ''}</td>
-                            <td class="px-4 py-3">${p.latitude ? p.latitude.toFixed(6) : 'N/A'}</td>
-                            <td class="px-4 py-3">${p.longitude ? p.longitude.toFixed(6) : 'N/A'}</td>
+                            <td class="px-4 py-3">${Number(p.actual_easting || 0).toFixed(2)}</td>
+                            <td class="px-4 py-3">${Number(p.actual_northing || 0).toFixed(2)}</td>
                             <td class="px-4 py-3">${Number(p.actual_elevation || 0).toFixed(3)}</td>
-                            <td class="px-4 py-3">${(p.dx || 0).toFixed(3)}</td>
-                            <td class="px-4 py-3">${(p.dy || 0).toFixed(3)}</td>
-                            <td class="px-4 py-3">${(p.dz || 0).toFixed(3)}</td>
                             <td class="px-4 py-3 ${dev > 0.4 ? 'text-red-600' : dev > 0.2 ? 'text-yellow-600' : 'text-green-600'}">${dev.toFixed(2)}</td>
                             <td class="px-4 py-3"><span class="px-2 py-1 ${statusClass} text-xs rounded-full">${status}</span></td>
                         </tr>
@@ -1215,7 +1318,7 @@
             }
 
             // ============================================
-            // CHART FUNCTIONS
+            // CHART FUNCTIONS (unchanged)
             // ============================================
             function createCharts() {
                 Object.values(charts).forEach(c => c?.destroy?.());
@@ -1422,10 +1525,10 @@
                 const rows = document.querySelectorAll('#hole-data-table tbody tr');
                 
                 rows.forEach(row => {
-                    if (row.cells.length < 9) return;
+                    if (row.cells.length < 6) return;
                     const holeId = row.cells[0]?.textContent.toLowerCase() || '';
-                    const dev = parseFloat(row.cells[7]?.textContent) || 0;
-                    const status = row.cells[8]?.textContent || '';
+                    const dev = parseFloat(row.cells[4]?.textContent) || 0;
+                    const status = row.cells[5]?.textContent || '';
                     
                     let show = true;
                     if (holeFilter && !holeId.includes(holeFilter)) show = false;
@@ -1515,6 +1618,7 @@
                 setTimeout(() => {
                     const fitAllBtn = document.getElementById('fit-all-btn');
                     const toggleClusterBtn = document.getElementById('toggle-cluster-btn');
+                    const transformToggle = document.getElementById('transform-toggle');
                     
                     if (fitAllBtn) {
                         fitAllBtn.addEventListener('click', fitAllData);
@@ -1523,6 +1627,10 @@
                     if (toggleClusterBtn) {
                         toggleClusterBtn.addEventListener('click', toggleClusters);
                         console.log('Toggle cluster button listener added');
+                    }
+                    if (transformToggle) {
+                        transformToggle.addEventListener('change', toggleTransformation);
+                        console.log('Transform toggle listener added');
                     }
                 }, 2000);
             }
