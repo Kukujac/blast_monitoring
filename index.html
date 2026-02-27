@@ -175,7 +175,7 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(5px);
             padding: 8px;
-            width: 160px;
+            width: 140px;
             z-index: 1000;
         }
 
@@ -198,21 +198,6 @@
 
         .map-controls button:hover {
             background-color: #bfdbfe;
-        }
-
-        .map-controls .toggle-switch {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-top: 8px;
-            padding: 4px 6px;
-            background-color: #e5e7eb;
-            border-radius: 4px;
-            font-size: 10px;
-        }
-
-        .map-controls .toggle-switch input {
-            margin-right: 4px;
         }
 
         .map-controls button:last-child {
@@ -256,30 +241,99 @@
             position: relative;
             border: 1px solid #ccc;
             margin-bottom: 20px;
+            overflow: hidden;
+            cursor: grab;
+        }
+        
+        .horizontal-deviation-container:active {
+            cursor: grabbing;
         }
         
         .deviation-point {
             position: absolute;
-            width: 8px;
-            height: 8px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             transform: translate(-50%, -50%);
+            pointer-events: auto;
+            z-index: 10;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .deviation-point:hover {
+            transform: translate(-50%, -50%) scale(1.5);
+            z-index: 100;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
         }
         
         .deviation-circle {
             position: absolute;
             border-radius: 50%;
-            border: 1px solid rgba(0,0,0,0.2);
+            border: 2px solid rgba(0,0,0,0.2);
             transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 5;
         }
         
         .deviation-target {
             position: absolute;
-            width: 4px;
-            height: 4px;
+            width: 6px;
+            height: 6px;
             background: #000;
             border-radius: 50%;
             transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 5;
+            border: 2px solid white;
+        }
+        
+        .deviation-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            white-space: nowrap;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .deviation-tooltip::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 5px solid rgba(0, 0, 0, 0.8);
+        }
+        
+        .chart-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 20;
+            display: flex;
+            gap: 5px;
+        }
+        
+        .chart-controls button {
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .chart-controls button:hover {
+            background: #f0f0f0;
         }
         
         .chart-container {
@@ -996,7 +1050,6 @@
             // Track states
             let clusteringEnabled = true;
             let hasFittedBounds = false;
-            let transformEnabled = true;
 
             // ============================================
             // INITIALIZATION
@@ -1059,7 +1112,7 @@
                 const baseMaps = {
                     "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         maxZoom: 23,
-                        attribution: '&copy; <a style="color:Red;">Prince Charles Devs</a>'
+                        attribution: '&copy; OpenStreetMap'
                     }),
                     "Satellite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                         maxZoom: 23,
@@ -1090,15 +1143,13 @@
                     "Monitoring Points": monitoringLayer,
                     "Pit Boundaries": pitLayer
                 };
-
-                // Add layer control with base maps
+                
                 const layerControl = L.control.layers(baseMaps, overlayMaps, { 
                     collapsed: false, 
                     position: 'topright' 
                 }).addTo(map);
                 
                 // Ensure only Actual Positions is checked by default
-                // This needs to happen after layers are added to the map
                 setTimeout(() => {
                     // Remove all layers from map first
                     if (designLayer) map.removeLayer(designLayer);
@@ -1109,27 +1160,19 @@
                     // Add only actualLayer to map
                     if (actualLayer) map.addLayer(actualLayer);
                     
-                    // Update the layer control to reflect the current state
-                    // This is a bit hacky but necessary to sync the checkboxes
+                    // Update the layer control checkboxes
                     const layerControls = document.querySelectorAll('.leaflet-control-layers-selector');
                     if (layerControls.length >= 5) {
-                        // Actual Positions checkbox (first one) - keep checked
-                        layerControls[0].checked = true;
-                        // Design Positions checkbox - uncheck
-                        layerControls[1].checked = false;
-                        // Planned Positions checkbox - uncheck
-                        layerControls[2].checked = false;
-                        // Monitoring Points checkbox - uncheck
-                        layerControls[3].checked = false;
-                        // Pit Boundaries checkbox - uncheck
-                        layerControls[4].checked = false;
+                        layerControls[0].checked = true;  // Actual Positions
+                        layerControls[1].checked = false; // Design Positions
+                        layerControls[2].checked = false; // Planned Positions
+                        layerControls[3].checked = false; // Monitoring Points
+                        layerControls[4].checked = false; // Pit Boundaries
                     }
-                }, 1000); // Delay to ensure layers are created
+                }, 1000);
                 
                 addMapControls();
                 addLegend();
-
-                
                 
                 // Add measurement control
                 L.control.measure({
@@ -1158,16 +1201,6 @@
                         <button id="geolocate-btn" class="w-full bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs p-2 rounded">
                             <i class="fas fa-location-arrow mr-1"></i>Locate Me
                         </button>
-                        <div class="toggle-switch">
-                            <span>Coordinate System:</span>
-                            <label class="flex items-center">
-                                <input type="checkbox" id="transform-toggle" checked class="mr-1">
-                                <span>WGS84</span>
-                            </label>
-                        </div>
-                        <div class="text-xs text-gray-600 mt-1 text-center">
-                            <span id="coord-display">Showing: WGS84 (transformed)</span>
-                        </div>
                     `;
                     L.DomEvent.disableClickPropagation(div);
                     return div;
@@ -1683,6 +1716,8 @@
                                     <h3 class="font-bold mb-1">Hole ${hole.properties.hole_id}</h3>
                                     <p><b>Type:</b> Design Position</p>
                                     <p><b>Elevation:</b> ${hole.design.elevation.toFixed(2)}m</p>
+                                    <p><b>Design Easting:</b> ${hole.design.easting.toFixed(2)}</p>
+                                    <p><b>Design Northing:</b> ${hole.design.northing.toFixed(2)}</p>
                                 </div>
                             `);
                             
@@ -1707,6 +1742,8 @@
                                     <h3 class="font-bold mb-1">Hole ${hole.properties.hole_id}</h3>
                                     <p><b>Type:</b> Planned Position</p>
                                     <p><b>Elevation:</b> ${hole.planned.elevation.toFixed(2)}m</p>
+                                    <p><b>Planned Easting:</b> ${hole.planned.easting.toFixed(2)}</p>
+                                    <p><b>Planned Northing:</b> ${hole.planned.northing.toFixed(2)}</p>
                                 </div>
                             `);
                             
@@ -1767,7 +1804,7 @@
                     setTimeout(() => {
                         fitAllData();
                         hasFittedBounds = true;
-                    }, 1000);
+                    }, 500);
                 }
             }
 
@@ -1979,7 +2016,7 @@
                 const baseMaps = {
                     "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         maxZoom: 23,
-                        attribution: '&copy; <a style="color:Red;">Prince Charles Devs</a>'
+                        attribution: '&copy; OpenStreetMap'
                     }),
                     "Satellite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                         maxZoom: 23,
@@ -2360,14 +2397,12 @@
                 });
             }
 
+            // PPV Chart - Styled exactly like the image
             function createPPVChart() {
                 const canvas = document.getElementById('ppv-chart');
                 if (!canvas) return;
                 
                 const ctx = canvas.getContext('2d');
-                
-                const locations = monitoringData.map(item => item.properties.location);
-                const ppvData = monitoringData.map(item => item.properties.ppv);
                 
                 if (monitoringData.length === 0) {
                     charts.ppvChart = new Chart(ctx, { 
@@ -2377,34 +2412,148 @@
                     return;
                 }
                 
+                const locations = monitoringData.map(item => item.properties.location);
+                const ppvData = monitoringData.map(item => item.properties.ppv);
+                
+                // Get blast pattern for title
+                const blastPattern = monitoringData[0]?.properties.shot_number || 'Current Blast';
+                
+                // Find min and max for better y-axis scaling
+                const maxPPV = Math.max(...ppvData, 2.0) * 1.1; // Add 10% padding
+                
                 charts.ppvChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: locations,
-                        datasets: [{
-                            label: 'PPV (mm/s)',
-                            data: ppvData,
-                            backgroundColor: '#3b82f6'
-                        }]
+                        datasets: [
+                            {
+                                label: 'PPV Actual',
+                                data: ppvData,
+                                backgroundColor: '#3b82f6', // Blue bars
+                                borderColor: '#1d4ed8',
+                                borderWidth: 1,
+                                barPercentage: 0.7,
+                                categoryPercentage: 0.8,
+                                order: 2
+                            },
+                            {
+                                label: 'PMGL Limit',
+                                data: Array(locations.length).fill(2.0),
+                                borderColor: '#ef4444',
+                                borderWidth: 2,
+                                type: 'line',
+                                fill: false,
+                                pointRadius: 0,
+                                tension: 0,
+                                order: 1
+                            },
+                            {
+                                label: 'MinCom Limit',
+                                data: Array(locations.length).fill(2.0),
+                                borderColor: '#f59e0b',
+                                borderWidth: 2,
+                                type: 'line',
+                                fill: false,
+                                pointRadius: 0,
+                                tension: 0,
+                                order: 1
+                            }
+                        ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: `Peak Particle Velocity (mm/s) - ${blastPattern}`,
+                                font: { size: 12, weight: 'normal' },
+                                padding: { bottom: 20 }
+                            },
+                            legend: {
+                                position: 'top',
+                                align: 'center',
+                                labels: {
+                                    boxWidth: 12,
+                                    padding: 15,
+                                    font: { size: 10 }
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'white',
+                                titleColor: '#333',
+                                bodyColor: '#666',
+                                borderColor: '#ccc',
+                                borderWidth: 1,
+                                cornerRadius: 4,
+                                callbacks: {
+                                    label: function(context) {
+                                        if (context.dataset.label === 'PPV Actual') {
+                                            return `PPV Actual: ${context.raw.toFixed(2)} mm/s`;
+                                        }
+                                        return `${context.dataset.label}: ${context.raw.toFixed(1)} mm/s`;
+                                    },
+                                    afterLabel: function(context) {
+                                        if (context.dataset.label === 'PPV Actual') {
+                                            const data = monitoringData[context.dataIndex];
+                                            return [
+                                                `Shot: ${data.properties.shot_number}`,
+                                                `Distance: ${data.properties.distance}m`,
+                                                `Charge: ${data.properties.charge}kg`
+                                            ];
+                                        }
+                                        return null;
+                                    }
+                                }
+                            }
+                        },
                         scales: {
-                            y: { beginAtZero: true, title: { display: true, text: 'PPV (mm/s)' } }
+                            y: {
+                                beginAtZero: true,
+                                max: 2.5, // Set max to 2.5 as in the image
+                                title: {
+                                    display: true,
+                                    text: 'PPV (mm/s)',
+                                    font: { size: 10, weight: 'normal' }
+                                },
+                                ticks: {
+                                    stepSize: 0.5,
+                                    font: { size: 9 }
+                                },
+                                grid: {
+                                    color: '#e5e7eb'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Monitoring Point',
+                                    font: { size: 10, weight: 'normal' }
+                                },
+                                ticks: {
+                                    font: { size: 9 }
+                                },
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        },
+                        layout: {
+                            padding: {
+                                top: 10,
+                                bottom: 10
+                            }
                         }
                     }
                 });
             }
 
+            // PSPL Chart - Styled exactly like the image
             function createPSPLChart() {
                 const canvas = document.getElementById('pspl-chart');
                 if (!canvas) return;
                 
                 const ctx = canvas.getContext('2d');
-                
-                const locations = monitoringData.map(item => item.properties.location);
-                const psplData = monitoringData.map(item => item.properties.pspl);
                 
                 if (monitoringData.length === 0) {
                     charts.psplChart = new Chart(ctx, { 
@@ -2414,45 +2563,167 @@
                     return;
                 }
                 
+                const locations = monitoringData.map(item => item.properties.location);
+                const psplData = monitoringData.map(item => item.properties.pspl);
+                
+                // Find min and max for better y-axis scaling
+                const minPSPL = Math.min(80, ...psplData) - 5;
+                const maxPSPL = Math.max(120, ...psplData) + 5;
+                
                 charts.psplChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: locations,
-                        datasets: [{
-                            label: 'PSPL (dB)',
-                            data: psplData,
-                            backgroundColor: '#10b981'
-                        }]
+                        datasets: [
+                            {
+                                label: 'PSPL Actual',
+                                data: psplData,
+                                backgroundColor: '#10b981', // Green bars
+                                borderColor: '#047857',
+                                borderWidth: 1,
+                                barPercentage: 0.7,
+                                categoryPercentage: 0.8,
+                                order: 2
+                            },
+                            {
+                                label: 'PMGL Limit',
+                                data: Array(locations.length).fill(117),
+                                borderColor: '#ef4444',
+                                borderWidth: 2,
+                                type: 'line',
+                                fill: false,
+                                pointRadius: 0,
+                                tension: 0,
+                                order: 1
+                            },
+                            {
+                                label: 'MinCom Limit',
+                                data: Array(locations.length).fill(117),
+                                borderColor: '#f59e0b',
+                                borderWidth: 2,
+                                type: 'line',
+                                fill: false,
+                                pointRadius: 0,
+                                tension: 0,
+                                order: 1
+                            }
+                        ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Peak Sound Pressure Level (dB) by Location',
+                                font: { size: 12, weight: 'normal' },
+                                padding: { bottom: 20 }
+                            },
+                            legend: {
+                                position: 'top',
+                                align: 'center',
+                                labels: {
+                                    boxWidth: 12,
+                                    padding: 15,
+                                    font: { size: 10 }
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'white',
+                                titleColor: '#333',
+                                bodyColor: '#666',
+                                borderColor: '#ccc',
+                                borderWidth: 1,
+                                cornerRadius: 4,
+                                callbacks: {
+                                    label: function(context) {
+                                        if (context.dataset.label === 'PSPL Actual') {
+                                            return `PSPL Actual: ${context.raw.toFixed(1)} dB`;
+                                        }
+                                        return `${context.dataset.label}: ${context.raw.toFixed(0)} dB`;
+                                    },
+                                    afterLabel: function(context) {
+                                        if (context.dataset.label === 'PSPL Actual') {
+                                            const data = monitoringData[context.dataIndex];
+                                            return [
+                                                `Shot: ${data.properties.shot_number}`,
+                                                `Weather: ${data.properties.weather}`,
+                                                `Rock Type: ${data.properties.rock_type}`
+                                            ];
+                                        }
+                                        return null;
+                                    }
+                                }
+                            }
+                        },
                         scales: {
-                            y: { beginAtZero: true, title: { display: true, text: 'PSPL (dB)' } }
+                            y: {
+                                min: 80,
+                                max: 120,
+                                title: {
+                                    display: true,
+                                    text: 'PSPL (dB)',
+                                    font: { size: 10, weight: 'normal' }
+                                },
+                                ticks: {
+                                    stepSize: 10,
+                                    font: { size: 9 }
+                                },
+                                grid: {
+                                    color: '#e5e7eb'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Monitoring Point',
+                                    font: { size: 10, weight: 'normal' }
+                                },
+                                ticks: {
+                                    font: { size: 9 }
+                                },
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        },
+                        layout: {
+                            padding: {
+                                top: 10,
+                                bottom: 10
+                            }
                         }
                     }
                 });
             }
 
+            // Volume Comparison Chart - Styled exactly like the image
             function createVolumeComparisonChart() {
                 const canvas = document.getElementById('volume-comparison-chart');
                 if (!canvas) return;
                 
                 const ctx = canvas.getContext('2d');
                 
+                // Prepare data for actual vs planned volumes
                 const volumeData = {};
                 
                 monitoringData.forEach(item => {
                     const props = item.properties;
-                    const shotNumber = props.shot_number || `Shot ${Object.keys(volumeData).length + 1}`;
-                    
-                    if (!volumeData[shotNumber]) {
-                        volumeData[shotNumber] = { actual: 0, planned: 0, count: 0 };
+                    if (props.volume_actual !== undefined && props.volume_planned !== undefined) {
+                        const shotNumber = props.shot_number || `Shot ${Object.keys(volumeData).length + 1}`;
+                        
+                        if (!volumeData[shotNumber]) {
+                            volumeData[shotNumber] = {
+                                actual: 0,
+                                planned: 0,
+                                count: 0
+                            };
+                        }
+                        
+                        volumeData[shotNumber].actual += props.volume_actual;
+                        volumeData[shotNumber].planned += props.volume_planned;
+                        volumeData[shotNumber].count++;
                     }
-                    
-                    volumeData[shotNumber].actual += props.volume_actual;
-                    volumeData[shotNumber].planned += props.volume_planned;
-                    volumeData[shotNumber].count++;
                 });
                 
                 const shotNumbers = [];
@@ -2474,20 +2745,110 @@
                     return;
                 }
                 
+                // Find max for y-axis scaling
+                const maxVolume = Math.max(...actualVolumes, ...plannedVolumes) * 1.1;
+                
                 charts.volumeComparisonChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: shotNumbers,
                         datasets: [
-                            { label: 'Actual Volume', data: actualVolumes, backgroundColor: '#3b82f6' },
-                            { label: 'Planned Volume', data: plannedVolumes, backgroundColor: '#10b981' }
+                            {
+                                label: 'Actual Volume',
+                                data: actualVolumes,
+                                backgroundColor: '#3b82f6', // Blue bars
+                                borderColor: '#1d4ed8',
+                                borderWidth: 1,
+                                barPercentage: 0.7,
+                                categoryPercentage: 0.8
+                            },
+                            {
+                                label: 'Planned Volume',
+                                data: plannedVolumes,
+                                backgroundColor: '#10b981', // Green bars
+                                borderColor: '#047857',
+                                borderWidth: 1,
+                                barPercentage: 0.7,
+                                categoryPercentage: 0.8
+                            }
                         ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Actual vs Planned Blast Volumes',
+                                font: { size: 12, weight: 'normal' },
+                                padding: { bottom: 20 }
+                            },
+                            legend: {
+                                position: 'top',
+                                align: 'center',
+                                labels: {
+                                    boxWidth: 12,
+                                    padding: 15,
+                                    font: { size: 10 }
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'white',
+                                titleColor: '#333',
+                                bodyColor: '#666',
+                                borderColor: '#ccc',
+                                borderWidth: 1,
+                                cornerRadius: 4,
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.dataset.label}: ${context.parsed.y.toFixed(0)} m³`;
+                                    },
+                                    afterLabel: function(context) {
+                                        const index = context.dataIndex;
+                                        const actual = actualVolumes[index];
+                                        const planned = plannedVolumes[index];
+                                        const diff = ((actual - planned) / planned * 100).toFixed(1);
+                                        const prefix = diff > 0 ? '+' : '';
+                                        return `Difference: ${prefix}${diff}%`;
+                                    }
+                                }
+                            }
+                        },
                         scales: {
-                            y: { title: { display: true, text: 'Volume (m³)' } }
+                            y: {
+                                beginAtZero: true,
+                                max: maxVolume,
+                                title: {
+                                    display: true,
+                                    text: 'Volume (m³)',
+                                    font: { size: 10, weight: 'normal' }
+                                },
+                                ticks: {
+                                    font: { size: 9 }
+                                },
+                                grid: {
+                                    color: '#e5e7eb'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Shot Number',
+                                    font: { size: 10, weight: 'normal' }
+                                },
+                                ticks: {
+                                    font: { size: 9 }
+                                },
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        },
+                        layout: {
+                            padding: {
+                                top: 10,
+                                bottom: 10
+                            }
                         }
                     }
                 });
@@ -2536,71 +2897,223 @@
                     return;
                 }
 
+                // Create zoom/pan controls
+                const controls = document.createElement('div');
+                controls.className = 'chart-controls';
+                controls.innerHTML = `
+                    <button id="zoom-in-horizontal">+</button>
+                    <button id="zoom-out-horizontal">-</button>
+                    <button id="reset-horizontal">↺</button>
+                `;
+                container.appendChild(controls);
+
                 const horizontalDeviations = holeData.map(h => ({
                     dx: parseFloat(h.properties.dx) || 0,
                     dy: parseFloat(h.properties.dy) || 0,
                     in_spec_02: h.properties.in_spec_02,
                     in_spec_04: h.properties.in_spec_04,
-                    holeId: h.properties.hole_id
+                    holeId: h.properties.hole_id,
+                    actualEasting: h.actual.easting,
+                    actualNorthing: h.actual.northing,
+                    designEasting: h.design.easting,
+                    designNorthing: h.design.northing,
+                    plannedEasting: h.planned.easting,
+                    plannedNorthing: h.planned.northing
                 }));
+
+                // Find max deviation to scale the chart properly
+                const maxDev = Math.max(...horizontalDeviations.map(d => Math.sqrt(d.dx*d.dx + d.dy*d.dy)));
+                // Use a scale that ensures all points fit within the chart
+                let chartMax = Math.max(0.4, maxDev * 1.1); // At least 0.4, or 10% larger than max deviation
 
                 const totalHolesPlanned = holeData.length;
                 const totalHolesActual = holeData.filter(h => h.actual.elevation).length;
                 const holesWithin02 = holeData.filter(h => h.properties.in_spec_02).length;
                 const holesWithin04 = holeData.filter(h => h.properties.in_spec_04).length;
-                const maxHorizontalDev = Math.max(...horizontalDeviations.map(d => Math.sqrt(d.dx*d.dx + d.dy*d.dy)));
 
                 document.getElementById('total-holes-horizontal-planned').textContent = totalHolesPlanned;
                 document.getElementById('total-holes-horizontal-actual').textContent = totalHolesActual;
                 document.getElementById('holes-within-0.2').textContent = holesWithin02;
                 document.getElementById('holes-within-0.4').textContent = holesWithin04;
-                document.getElementById('max-horizontal-deviation').textContent = maxHorizontalDev.toFixed(2);
+                document.getElementById('max-horizontal-deviation').textContent = maxDev.toFixed(2);
 
-                const w = container.clientWidth || 300;
-                const h = container.clientHeight || 300;
-                const cx = w/2, cy = h/2;
-                const scale = Math.min(w, h)/2 * 0.8;
+                const w = container.clientWidth;
+                const h = container.clientHeight;
+                let cx = w/2, cy = h/2;
+                let scale = Math.min(w, h) / (2 * chartMax) * 0.9;
+                let offsetX = 0, offsetY = 0;
+                let zoomLevel = 1;
 
-                [0.2, 0.4].forEach((r, i) => {
-                    const circle = document.createElement('div');
-                    circle.className = 'deviation-circle';
-                    circle.style.cssText = `left:${cx}px;top:${cy}px;width:${r*scale*2}px;height:${r*scale*2}px;border-color:${i===0?'#4ade80':'#fbbf24'}`;
-                    container.appendChild(circle);
+                function drawChart() {
+                    // Clear previous points and circles but keep controls
+                    const points = container.querySelectorAll('.deviation-point, .deviation-circle, .deviation-target');
+                    points.forEach(p => p.remove());
+
+                    // Create target circles
+                    [0.2, 0.4].forEach((r, i) => {
+                        if (r <= chartMax * zoomLevel) {
+                            const circle = document.createElement('div');
+                            circle.className = 'deviation-circle';
+                            circle.style.left = (cx + offsetX) + 'px';
+                            circle.style.top = (cy + offsetY) + 'px';
+                            circle.style.width = (r * scale * 2) + 'px';
+                            circle.style.height = (r * scale * 2) + 'px';
+                            circle.style.borderColor = i === 0 ? '#4ade80' : '#fbbf24';
+                            container.appendChild(circle);
+                        }
+                    });
+
+                    const target = document.createElement('div');
+                    target.className = 'deviation-target';
+                    target.style.left = (cx + offsetX) + 'px';
+                    target.style.top = (cy + offsetY) + 'px';
+                    container.appendChild(target);
+
+                    // Create tooltip element
+                    let tooltip = document.createElement('div');
+                    tooltip.className = 'deviation-tooltip';
+                    tooltip.style.display = 'none';
+                    container.appendChild(tooltip);
+
+                    // Plot each deviation point
+                    horizontalDeviations.forEach(d => {
+                        const x = cx + offsetX + d.dx * scale * zoomLevel;
+                        const y = cy + offsetY + d.dy * scale * zoomLevel;
+                        
+                        // Only draw if within visible area (with margin)
+                        const margin = 20;
+                        if (x >= -margin && x <= w + margin && y >= -margin && y <= h + margin) {
+                            const point = document.createElement('div');
+                            point.className = 'deviation-point';
+                            
+                            let color;
+                            if (d.in_spec_02) {
+                                color = '#4ade80';
+                            } else if (d.in_spec_04) {
+                                color = '#fbbf24';
+                            } else {
+                                color = '#ef4444';
+                            }
+                            
+                            point.style.left = x + 'px';
+                            point.style.top = y + 'px';
+                            point.style.backgroundColor = color;
+                            
+                            // Add hover tooltip
+                            point.addEventListener('mouseenter', (e) => {
+                                tooltip.innerHTML = `
+                                    <strong>Hole ${d.holeId}</strong><br>
+                                    DX: ${d.dx.toFixed(2)}m | DY: ${d.dy.toFixed(2)}m<br>
+                                    Total: ${Math.sqrt(d.dx*d.dx + d.dy*d.dy).toFixed(2)}m<br>
+                                    Status: ${d.in_spec_02 ? 'Excellent' : d.in_spec_04 ? 'Warning' : 'Critical'}<br>
+                                    <br>
+                                    <strong>Actual:</strong> ${d.actualEasting.toFixed(2)}E, ${d.actualNorthing.toFixed(2)}N<br>
+                                    <strong>Design:</strong> ${d.designEasting.toFixed(2)}E, ${d.designNorthing.toFixed(2)}N<br>
+                                    <strong>Planned:</strong> ${d.plannedEasting.toFixed(2)}E, ${d.plannedNorthing.toFixed(2)}N
+                                `;
+                                tooltip.style.display = 'block';
+                                tooltip.style.left = (e.pageX - container.getBoundingClientRect().left + 15) + 'px';
+                                tooltip.style.top = (e.pageY - container.getBoundingClientRect().top - 40) + 'px';
+                            });
+                            
+                            point.addEventListener('mousemove', (e) => {
+                                tooltip.style.left = (e.pageX - container.getBoundingClientRect().left + 15) + 'px';
+                                tooltip.style.top = (e.pageY - container.getBoundingClientRect().top - 40) + 'px';
+                            });
+                            
+                            point.addEventListener('mouseleave', () => {
+                                tooltip.style.display = 'none';
+                            });
+                            
+                            container.appendChild(point);
+                        }
+                    });
+                }
+
+                // Add zoom/pan functionality
+                let isDragging = false;
+                let lastX, lastY;
+
+                container.addEventListener('mousedown', (e) => {
+                    if (e.target === controls || e.target.closest('.chart-controls')) return;
+                    isDragging = true;
+                    lastX = e.clientX;
+                    lastY = e.clientY;
+                    container.style.cursor = 'grabbing';
                 });
 
-                const target = document.createElement('div');
-                target.className = 'deviation-target';
-                target.style.cssText = `left:${cx}px;top:${cy}px`;
-                container.appendChild(target);
-
-                horizontalDeviations.forEach(d => {
-                    const point = document.createElement('div');
-                    point.className = 'deviation-point';
-                    point.style.cssText = `left:${cx + d.dx*scale}px;top:${cy + d.dy*scale}px;background:${d.in_spec_02 ? '#4ade80' : d.in_spec_04 ? '#fbbf24' : '#ef4444'}`;
-                    point.title = `Hole ${d.holeId}: DX=${d.dx.toFixed(2)}m, DY=${d.dy.toFixed(2)}m`;
-                    container.appendChild(point);
+                container.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    if (e.target === controls || e.target.closest('.chart-controls')) return;
+                    
+                    const deltaX = e.clientX - lastX;
+                    const deltaY = e.clientY - lastY;
+                    
+                    offsetX += deltaX;
+                    offsetY += deltaY;
+                    
+                    lastX = e.clientX;
+                    lastY = e.clientY;
+                    
+                    drawChart();
                 });
 
+                container.addEventListener('mouseup', () => {
+                    isDragging = false;
+                    container.style.cursor = 'grab';
+                });
+
+                container.addEventListener('mouseleave', () => {
+                    isDragging = false;
+                    container.style.cursor = 'grab';
+                });
+
+                // Zoom controls
+                document.getElementById('zoom-in-horizontal').addEventListener('click', () => {
+                    zoomLevel *= 1.2;
+                    drawChart();
+                });
+
+                document.getElementById('zoom-out-horizontal').addEventListener('click', () => {
+                    zoomLevel /= 1.2;
+                    drawChart();
+                });
+
+                document.getElementById('reset-horizontal').addEventListener('click', () => {
+                    offsetX = 0;
+                    offsetY = 0;
+                    zoomLevel = 1;
+                    drawChart();
+                });
+
+                // Initial draw
+                drawChart();
+
+                // Add legend
                 const legend = document.createElement('div');
                 legend.style.position = 'absolute';
                 legend.style.bottom = '10px';
                 legend.style.left = '10px';
-                legend.style.background = 'rgba(255, 255, 255, 0.8)';
-                legend.style.padding = '5px';
+                legend.style.background = 'rgba(255, 255, 255, 0.9)';
+                legend.style.padding = '8px';
                 legend.style.borderRadius = '4px';
-                legend.style.fontSize = '10px';
+                legend.style.fontSize = '11px';
+                legend.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                legend.style.zIndex = '20';
+                legend.style.pointerEvents = 'none';
                 legend.innerHTML = `
-                    <div style="display: flex; align-items: center; margin-bottom: 2px;">
-                        <div style="width: 8px; height: 8px; background: #4ade80; border-radius: 50%; margin-right: 5px;"></div>
-                        <span>In Spec 0.2m</span>
+                    <div style="font-weight: bold; margin-bottom: 5px;">Deviation Legend</div>
+                    <div style="display: flex; align-items: center; margin-bottom: 3px;">
+                        <div style="width: 10px; height: 10px; background: #4ade80; border-radius: 50%; margin-right: 6px;"></div>
+                        <span>Within 0.2m (Excellent)</span>
                     </div>
-                    <div style="display: flex; align-items: center; margin-bottom: 2px;">
-                        <div style="width: 8px; height: 8px; background: #fbbf24; border-radius: 50%; margin-right: 5px;"></div>
-                        <span>In Spec 0.4m</span>
+                    <div style="display: flex; align-items: center; margin-bottom: 3px;">
+                        <div style="width: 10px; height: 10px; background: #fbbf24; border-radius: 50%; margin-right: 6px;"></div>
+                        <span>Within 0.4m (Warning)</span>
                     </div>
                     <div style="display: flex; align-items: center;">
-                        <div style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%; margin-right: 5px;"></div>
-                        <span>Out of Spec</span>
+                        <div style="width: 10px; height: 10px; background: #ef4444; border-radius: 50%; margin-right: 6px;"></div>
+                        <span>Outside 0.4m (Critical)</span>
                     </div>
                 `;
                 container.appendChild(legend);
@@ -2860,23 +3373,10 @@
                     const fitAllBtn = document.getElementById('fit-all-btn');
                     const toggleClusterBtn = document.getElementById('toggle-cluster-btn');
                     const geolocateBtn = document.getElementById('geolocate-btn');
-                    const transformToggle = document.getElementById('transform-toggle');
                     
                     if (fitAllBtn) fitAllBtn.addEventListener('click', fitAllData);
                     if (toggleClusterBtn) toggleClusterBtn.addEventListener('click', toggleClusters);
                     if (geolocateBtn) geolocateBtn.addEventListener('click', locateUser);
-                    if (transformToggle) {
-                        transformToggle.addEventListener('change', function() {
-                            transformEnabled = this.checked;
-                            const coordDisplay = document.getElementById('coord-display');
-                            if (coordDisplay) {
-                                coordDisplay.textContent = `Showing: ${transformEnabled ? 'WGS84 (transformed)' : 'UTM (raw)'}`;
-                            }
-                            // Redraw markers with new popup format
-                            plotHoleData();
-                            plotMonitoringData();
-                        });
-                    }
                 }, 2000);
             }
 
