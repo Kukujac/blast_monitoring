@@ -988,7 +988,9 @@
             let map;
             
             // Store markers for toggling
-            let holeMarkers = [];
+            let actualMarkers = [];
+            let designMarkers = [];
+            let plannedMarkers = [];
             let monitoringMarkers = [];
             
             // Track states
@@ -1228,6 +1230,8 @@
 
             async function loadPitData() {
                 try {
+                    console.log('Loading pit boundaries...');
+                    
                     const { data, error } = await supabaseClient
                         .from('pit_boundaries')
                         .select('name, geom');
@@ -1236,17 +1240,69 @@
                     
                     if (pitLayer) pitLayer.clearLayers();
                     
-                    const features = (data || []).map(row => ({
-                        type: "Feature",
-                        geometry: row.geom,
-                        properties: { name: row.name }
-                    }));
+                    if (!data || data.length === 0) {
+                        console.log('No pit boundaries found');
+                        return;
+                    }
                     
-                    if (features.length > 0) {
-                        L.geoJSON(features, {
+                    // Transform each feature from UTM 32630 to WGS84
+                    const transformedFeatures = data.map(row => {
+                        // Parse the geometry if it's a string
+                        const geom = typeof row.geom === 'string' ? JSON.parse(row.geom) : row.geom;
+                        
+                        if (!geom || !geom.coordinates) return null;
+                        
+                        // Handle different geometry types (Polygon, MultiPolygon)
+                        if (geom.type === 'Polygon') {
+                            // Transform each ring of the polygon
+                            const transformedCoords = geom.coordinates.map(ring => {
+                                return ring.map(coord => {
+                                    const wgs84 = utmToWgs84(coord[0], coord[1]);
+                                    return wgs84 ? [wgs84.lon, wgs84.lat] : coord;
+                                });
+                            });
+                            
+                            return {
+                                type: "Feature",
+                                geometry: {
+                                    type: "Polygon",
+                                    coordinates: transformedCoords
+                                },
+                                properties: { name: row.name }
+                            };
+                        } 
+                        else if (geom.type === 'MultiPolygon') {
+                            // Transform each polygon in the multipolygon
+                            const transformedCoords = geom.coordinates.map(polygon => {
+                                return polygon.map(ring => {
+                                    return ring.map(coord => {
+                                        const wgs84 = utmToWgs84(coord[0], coord[1]);
+                                        return wgs84 ? [wgs84.lon, wgs84.lat] : coord;
+                                    });
+                                });
+                            });
+                            
+                            return {
+                                type: "Feature",
+                                geometry: {
+                                    type: "MultiPolygon",
+                                    coordinates: transformedCoords
+                                },
+                                properties: { name: row.name }
+                            };
+                        }
+                        
+                        return null;
+                    }).filter(f => f !== null);
+                    
+                    if (transformedFeatures.length > 0) {
+                        L.geoJSON(transformedFeatures, {
                             style: {
-                                color: '#555', weight: 2, fillColor: '#888',
-                                fillOpacity: 0.5, dashArray: '5, 5'
+                                color: '#555', 
+                                weight: 2, 
+                                fillColor: '#888',
+                                fillOpacity: 0.3, 
+                                dashArray: '5, 5'
                             },
                             onEachFeature: (feature, layer) => {
                                 if (feature.properties.name) {
@@ -1256,11 +1312,12 @@
                         }).addTo(pitLayer);
                         
                         pitLayer.addTo(map);
-                        console.log(`Loaded ${features.length} pit boundaries`);
+                        console.log(`Loaded and transformed ${transformedFeatures.length} pit boundaries`);
                     }
                     
                 } catch (error) {
                     console.error('Error loading pit data:', error);
+                    showNotification('Failed to load pit boundaries', 'error');
                 }
             }
 
@@ -1286,15 +1343,16 @@
                             actual_easting,
                             actual_northing,
                             design_elevation,
+                            design_easting,
+                            design_northing,
                             planned_elevation,
+                            planned_easting,
+                            planned_northing,
                             dx, dy, dz,
                             hole_deviation,
                             in_spec_02,
                             in_spec_04,
-                            blast_date,
-                            geom_actual,
-                            geom_design,
-                            geom_planned
+                            blast_date
                         `);
                     
                     if (error) throw error;
@@ -1306,31 +1364,36 @@
                             return dev > 0 && actEl > 0;
                         })
                         .map(row => {
-                            const easting = parseFloat(row.actual_easting);
-                            const northing = parseFloat(row.actual_northing);
-                            
-                            let wgs84 = null;
-                            if (!isNaN(easting) && !isNaN(northing) && easting > 0 && northing > 0) {
-                                wgs84 = utmToWgs84(easting, northing);
-                            }
+                            // Transform coordinates for all three positions
+                            const actualWgs84 = utmToWgs84(parseFloat(row.actual_easting), parseFloat(row.actual_northing));
+                            const designWgs84 = utmToWgs84(parseFloat(row.design_easting), parseFloat(row.design_northing));
+                            const plannedWgs84 = utmToWgs84(parseFloat(row.planned_easting), parseFloat(row.planned_northing));
                             
                             return {
-                                geometry_actual: row.geom_actual,
-                                geometry_design: row.geom_design,
-                                geometry_planned: row.geom_planned,
+                                actual: {
+                                    easting: parseFloat(row.actual_easting),
+                                    northing: parseFloat(row.actual_northing),
+                                    wgs84: actualWgs84,
+                                    elevation: parseFloat(row.actual_elevation)
+                                },
+                                design: {
+                                    easting: parseFloat(row.design_easting),
+                                    northing: parseFloat(row.design_northing),
+                                    wgs84: designWgs84,
+                                    elevation: parseFloat(row.design_elevation)
+                                },
+                                planned: {
+                                    easting: parseFloat(row.planned_easting),
+                                    northing: parseFloat(row.planned_northing),
+                                    wgs84: plannedWgs84,
+                                    elevation: parseFloat(row.planned_elevation)
+                                },
                                 properties: {
                                     hole_id: row.hole_id,
-                                    actual_elevation: row.actual_elevation,
-                                    actual_northing: row.actual_northing,
-                                    actual_easting: row.actual_easting,
-                                    design_elevation: row.design_elevation,
-                                    planned_elevation: row.planned_elevation,
                                     dx: row.dx, dy: row.dy, dz: row.dz,
                                     hole_deviation: row.hole_deviation,
                                     in_spec_02: row.in_spec_02,
-                                    in_spec_04: row.in_spec_04,
-                                    utm: { easting, northing },
-                                    wgs84: wgs84
+                                    in_spec_04: row.in_spec_04
                                 }
                             };
                         });
@@ -1390,8 +1453,6 @@
                         }
                         
                         return {
-                            geometry: row.geom,
-                            utm: { easting, northing },
                             wgs84: wgs84,
                             properties: {
                                 date: row.blast_date, 
@@ -1437,139 +1498,138 @@
                 designLayer.clearLayers();
                 plannedLayer.clearLayers();
                 
-                const actualMarkers = [];
-                const designMarkers = [];
-                const plannedMarkers = [];
+                actualMarkers = [];
+                designMarkers = [];
+                plannedMarkers = [];
                 
-                holeData.forEach(feature => {
-                    const props = feature.properties;
-                    const deviation = parseFloat(props.hole_deviation) || 0;
+                holeData.forEach(hole => {
+                    const deviation = parseFloat(hole.properties.hole_deviation) || 0;
                     
                     // Plot actual position
-                    if (feature.geometry_actual) {
-                        try {
-                            const geom = typeof feature.geometry_actual === 'string' ? 
-                                JSON.parse(feature.geometry_actual) : feature.geometry_actual;
-                            const latlng = L.GeoJSON.coordsToLatLng(geom.coordinates);
+                    if (hole.actual && hole.actual.wgs84) {
+                        const lat = hole.actual.wgs84.lat;
+                        const lon = hole.actual.wgs84.lon;
+                        
+                        if (isValidGhanaCoordinate(lat, lon)) {
+                            const marker = L.circleMarker([lat, lon], {
+                                color: '#3333ff',
+                                fillColor: deviation > 0.4 ? '#ff3333' : deviation > 0.2 ? '#ffcc00' : '#33ff33',
+                                fillOpacity: 0.7,
+                                radius: 6,
+                                weight: 2
+                            }).bindPopup(`
+                                <div class="text-sm">
+                                    <h3 class="font-bold mb-1">Hole ${hole.properties.hole_id}</h3>
+                                    <p><b>Type:</b> Actual Position</p>
+                                    <p><b>Deviation:</b> ${deviation.toFixed(2)}m</p>
+                                    <p><b>DX:</b> ${hole.properties.dx}m</p>
+                                    <p><b>DY:</b> ${hole.properties.dy}m</p>
+                                    <p><b>DZ:</b> ${hole.properties.dz}m</p>
+                                    <p><b>Elevation:</b> ${hole.actual.elevation.toFixed(2)}m</p>
+                                    <p><b>Status:</b> ${deviation <= 0.2 ? 'Excellent' : deviation <= 0.4 ? 'Warning' : 'Critical'}</p>
+                                </div>
+                            `);
                             
-                            if (isValidGhanaCoordinate(latlng.lat, latlng.lng)) {
-                                const marker = L.circleMarker(latlng, {
-                                    color: '#3333ff',
-                                    fillColor: deviation > 0.4 ? '#ff3333' : deviation > 0.2 ? '#ffcc00' : '#33ff33',
-                                    fillOpacity: 0.7,
-                                    radius: 6,
-                                    weight: 2
-                                }).bindPopup(`
-                                    <div class="text-sm">
-                                        <h3 class="font-bold mb-1">Hole ${props.hole_id}</h3>
-                                        <p><b>Deviation:</b> ${deviation.toFixed(2)}m</p>
-                                        <p><b>DX:</b> ${props.dx}m</p>
-                                        <p><b>DY:</b> ${props.dy}m</p>
-                                        <p><b>DZ:</b> ${props.dz}m</p>
-                                        <p><b>Status:</b> ${props.in_spec_02 ? 'Excellent' : deviation > 0.4 ? 'Critical' : 'Warning'}</p>
-                                    </div>
-                                `);
-                                actualMarkers.push(marker);
-                            }
-                        } catch (e) {
-                            console.warn('Error plotting actual position:', e);
+                            actualMarkers.push(marker);
                         }
                     }
                     
                     // Plot design position
-                    if (feature.geometry_design) {
-                        try {
-                            const geom = typeof feature.geometry_design === 'string' ? 
-                                JSON.parse(feature.geometry_design) : feature.geometry_design;
-                            const latlng = L.GeoJSON.coordsToLatLng(geom.coordinates);
+                    if (hole.design && hole.design.wgs84) {
+                        const lat = hole.design.wgs84.lat;
+                        const lon = hole.design.wgs84.lon;
+                        
+                        if (isValidGhanaCoordinate(lat, lon)) {
+                            const marker = L.circleMarker([lat, lon], {
+                                color: '#ff3333',
+                                fillColor: '#ff3333',
+                                fillOpacity: 0.7,
+                                radius: 5,
+                                weight: 2
+                            }).bindPopup(`
+                                <div class="text-sm">
+                                    <h3 class="font-bold mb-1">Hole ${hole.properties.hole_id}</h3>
+                                    <p><b>Type:</b> Design Position</p>
+                                    <p><b>Elevation:</b> ${hole.design.elevation.toFixed(2)}m</p>
+                                </div>
+                            `);
                             
-                            if (isValidGhanaCoordinate(latlng.lat, latlng.lng)) {
-                                const marker = L.circleMarker(latlng, {
-                                    color: '#ff3333',
-                                    fillColor: '#ff3333',
-                                    fillOpacity: 0.7,
-                                    radius: 5,
-                                    weight: 2
-                                }).bindPopup(`
-                                    <div class="text-sm">
-                                        <h3 class="font-bold mb-1">Design Position</h3>
-                                        <p><b>Hole ID:</b> ${props.hole_id}</p>
-                                        <p><b>Elevation:</b> ${props.design_elevation}m</p>
-                                    </div>
-                                `);
-                                designMarkers.push(marker);
-                            }
-                        } catch (e) {
-                            console.warn('Error plotting design position:', e);
+                            designMarkers.push(marker);
                         }
                     }
                     
                     // Plot planned position
-                    if (feature.geometry_planned) {
-                        try {
-                            const geom = typeof feature.geometry_planned === 'string' ? 
-                                JSON.parse(feature.geometry_planned) : feature.geometry_planned;
-                            const latlng = L.GeoJSON.coordsToLatLng(geom.coordinates);
+                    if (hole.planned && hole.planned.wgs84) {
+                        const lat = hole.planned.wgs84.lat;
+                        const lon = hole.planned.wgs84.lon;
+                        
+                        if (isValidGhanaCoordinate(lat, lon)) {
+                            const marker = L.circleMarker([lat, lon], {
+                                color: '#33ff33',
+                                fillColor: '#33ff33',
+                                fillOpacity: 0.7,
+                                radius: 5,
+                                weight: 2
+                            }).bindPopup(`
+                                <div class="text-sm">
+                                    <h3 class="font-bold mb-1">Hole ${hole.properties.hole_id}</h3>
+                                    <p><b>Type:</b> Planned Position</p>
+                                    <p><b>Elevation:</b> ${hole.planned.elevation.toFixed(2)}m</p>
+                                </div>
+                            `);
                             
-                            if (isValidGhanaCoordinate(latlng.lat, latlng.lng)) {
-                                const marker = L.circleMarker(latlng, {
-                                    color: '#33ff33',
-                                    fillColor: '#33ff33',
-                                    fillOpacity: 0.7,
-                                    radius: 5,
-                                    weight: 2
-                                }).bindPopup(`
-                                    <div class="text-sm">
-                                        <h3 class="font-bold mb-1">Planned Position</h3>
-                                        <p><b>Hole ID:</b> ${props.hole_id}</p>
-                                        <p><b>Elevation:</b> ${props.planned_elevation}m</p>
-                                    </div>
-                                `);
-                                plannedMarkers.push(marker);
-                            }
-                        } catch (e) {
-                            console.warn('Error plotting planned position:', e);
+                            plannedMarkers.push(marker);
                         }
                     }
                 });
                 
                 // Add markers to clusters
-                const actualCluster = L.markerClusterGroup({
-                    chunkedLoading: true,
-                    maxClusterRadius: 50,
-                    spiderfyOnMaxZoom: true,
-                    showCoverageOnHover: false,
-                    zoomToBoundsOnClick: true,
-                    disableClusteringAtZoom: 16
-                });
+                if (actualMarkers.length > 0) {
+                    const actualCluster = L.markerClusterGroup({
+                        chunkedLoading: true,
+                        maxClusterRadius: 50,
+                        spiderfyOnMaxZoom: true,
+                        showCoverageOnHover: false,
+                        zoomToBoundsOnClick: true,
+                        disableClusteringAtZoom: 16
+                    });
+                    
+                    actualMarkers.forEach(m => actualCluster.addLayer(m));
+                    actualLayer.addLayer(actualCluster);
+                    actualLayer.addTo(map);
+                }
                 
-                const designCluster = L.markerClusterGroup({
-                    chunkedLoading: true,
-                    maxClusterRadius: 50,
-                    spiderfyOnMaxZoom: true,
-                    showCoverageOnHover: false,
-                    zoomToBoundsOnClick: true,
-                    disableClusteringAtZoom: 16
-                });
+                if (designMarkers.length > 0) {
+                    const designCluster = L.markerClusterGroup({
+                        chunkedLoading: true,
+                        maxClusterRadius: 50,
+                        spiderfyOnMaxZoom: true,
+                        showCoverageOnHover: false,
+                        zoomToBoundsOnClick: true,
+                        disableClusteringAtZoom: 16
+                    });
+                    
+                    designMarkers.forEach(m => designCluster.addLayer(m));
+                    designLayer.addLayer(designCluster);
+                    designLayer.addTo(map);
+                }
                 
-                const plannedCluster = L.markerClusterGroup({
-                    chunkedLoading: true,
-                    maxClusterRadius: 50,
-                    spiderfyOnMaxZoom: true,
-                    showCoverageOnHover: false,
-                    zoomToBoundsOnClick: true,
-                    disableClusteringAtZoom: 16
-                });
+                if (plannedMarkers.length > 0) {
+                    const plannedCluster = L.markerClusterGroup({
+                        chunkedLoading: true,
+                        maxClusterRadius: 50,
+                        spiderfyOnMaxZoom: true,
+                        showCoverageOnHover: false,
+                        zoomToBoundsOnClick: true,
+                        disableClusteringAtZoom: 16
+                    });
+                    
+                    plannedMarkers.forEach(m => plannedCluster.addLayer(m));
+                    plannedLayer.addLayer(plannedCluster);
+                    plannedLayer.addTo(map);
+                }
                 
-                actualMarkers.forEach(m => actualCluster.addLayer(m));
-                designMarkers.forEach(m => designCluster.addLayer(m));
-                plannedMarkers.forEach(m => plannedCluster.addLayer(m));
-                
-                actualLayer.addLayer(actualCluster);
-                designLayer.addLayer(designCluster);
-                plannedLayer.addLayer(plannedCluster);
-                
-                actualLayer.addTo(map);
+                console.log(`Plotted ${actualMarkers.length} actual, ${designMarkers.length} design, ${plannedMarkers.length} planned markers`);
                 
                 if (!hasFittedBounds && (actualMarkers.length > 0 || designMarkers.length > 0 || plannedMarkers.length > 0)) {
                     setTimeout(() => {
@@ -1619,6 +1679,7 @@
                 
                 if (monitoringMarkers.length > 0) {
                     monitoringLayer.addTo(map);
+                    console.log(`Plotted ${monitoringMarkers.length} monitoring markers`);
                 }
             }
 
@@ -1631,49 +1692,18 @@
                 let hasData = false;
                 let pointCount = 0;
 
-                // Collect points from actualLayer
-                if (actualLayer && actualLayer.getLayers().length > 0) {
-                    actualLayer.eachLayer(function(subLayer) {
-                        try {
-                            if (subLayer instanceof L.MarkerClusterGroup) {
-                                subLayer.eachLayer(function(marker) {
-                                    if (marker.getLatLng) {
-                                        const latlng = marker.getLatLng();
-                                        if (latlng && isValidGhanaCoordinate(latlng.lat, latlng.lng)) {
-                                            bounds.extend(latlng);
-                                            hasData = true;
-                                            pointCount++;
-                                        }
-                                    }
-                                });
-                            } else if (subLayer.getLatLng) {
-                                const latlng = subLayer.getLatLng();
-                                if (latlng && isValidGhanaCoordinate(latlng.lat, latlng.lng)) {
-                                    bounds.extend(latlng);
-                                    hasData = true;
-                                    pointCount++;
-                                }
-                            }
-                        } catch (e) {}
-                    });
-                }
-
-                // Add design and planned layers
-                [designLayer, plannedLayer, monitoringLayer].forEach(layer => {
-                    if (layer && layer.getLayers().length > 0) {
-                        layer.eachLayer(function(marker) {
-                            try {
-                                if (marker.getLatLng) {
-                                    const latlng = marker.getLatLng();
-                                    if (latlng && isValidGhanaCoordinate(latlng.lat, latlng.lng)) {
-                                        bounds.extend(latlng);
-                                        hasData = true;
-                                        pointCount++;
-                                    }
-                                }
-                            } catch (e) {}
-                        });
-                    }
+                // Collect points from all layers
+                const allMarkers = [...actualMarkers, ...designMarkers, ...plannedMarkers, ...monitoringMarkers];
+                
+                allMarkers.forEach(marker => {
+                    try {
+                        const latlng = marker.getLatLng();
+                        if (latlng && isValidGhanaCoordinate(latlng.lat, latlng.lng)) {
+                            bounds.extend(latlng);
+                            hasData = true;
+                            pointCount++;
+                        }
+                    } catch (e) {}
                 });
 
                 // Add pit boundaries
@@ -1725,29 +1755,9 @@
                     const newDesignLayer = L.layerGroup();
                     const newPlannedLayer = L.layerGroup();
                     
-                    actualLayer.getLayers().forEach(clusterGroup => {
-                        if (clusterGroup instanceof L.MarkerClusterGroup) {
-                            clusterGroup.getLayers().forEach(marker => {
-                                newActualLayer.addLayer(marker);
-                            });
-                        }
-                    });
-                    
-                    designLayer.getLayers().forEach(clusterGroup => {
-                        if (clusterGroup instanceof L.MarkerClusterGroup) {
-                            clusterGroup.getLayers().forEach(marker => {
-                                newDesignLayer.addLayer(marker);
-                            });
-                        }
-                    });
-                    
-                    plannedLayer.getLayers().forEach(clusterGroup => {
-                        if (clusterGroup instanceof L.MarkerClusterGroup) {
-                            clusterGroup.getLayers().forEach(marker => {
-                                newPlannedLayer.addLayer(marker);
-                            });
-                        }
-                    });
+                    actualMarkers.forEach(marker => newActualLayer.addLayer(marker));
+                    designMarkers.forEach(marker => newDesignLayer.addLayer(marker));
+                    plannedMarkers.forEach(marker => newPlannedLayer.addLayer(marker));
                     
                     actualLayer = newActualLayer;
                     designLayer = newDesignLayer;
@@ -1800,17 +1810,9 @@
                         disableClusteringAtZoom: 16
                     });
                     
-                    actualLayer.getLayers().forEach(marker => {
-                        newActualCluster.addLayer(marker);
-                    });
-                    
-                    designLayer.getLayers().forEach(marker => {
-                        newDesignCluster.addLayer(marker);
-                    });
-                    
-                    plannedLayer.getLayers().forEach(marker => {
-                        newPlannedCluster.addLayer(marker);
-                    });
+                    actualMarkers.forEach(marker => newActualCluster.addLayer(marker));
+                    designMarkers.forEach(marker => newDesignCluster.addLayer(marker));
+                    plannedMarkers.forEach(marker => newPlannedCluster.addLayer(marker));
                     
                     actualLayer = L.layerGroup([newActualCluster]);
                     designLayer = L.layerGroup([newDesignCluster]);
@@ -1878,13 +1880,13 @@
             }
 
             function ensureLayersVisible() {
-                if (actualLayer && !map.hasLayer(actualLayer) && actualLayer.getLayers().length > 0) {
+                if (actualLayer && !map.hasLayer(actualLayer) && actualMarkers.length > 0) {
                     actualLayer.addTo(map);
                 }
-                if (designLayer && !map.hasLayer(designLayer) && designLayer.getLayers().length > 0) {
+                if (designLayer && !map.hasLayer(designLayer) && designMarkers.length > 0) {
                     designLayer.addTo(map);
                 }
-                if (plannedLayer && !map.hasLayer(plannedLayer) && plannedLayer.getLayers().length > 0) {
+                if (plannedLayer && !map.hasLayer(plannedLayer) && plannedMarkers.length > 0) {
                     plannedLayer.addTo(map);
                 }
                 if (monitoringLayer && !map.hasLayer(monitoringLayer) && monitoringMarkers.length > 0) {
@@ -1918,9 +1920,9 @@
                     tbody.innerHTML += `
                         <tr>
                             <td class="px-4 py-3">${p.hole_id || ''}</td>
-                            <td class="px-4 py-3">${Number(p.actual_easting || 0).toFixed(2)}</td>
-                            <td class="px-4 py-3">${Number(p.actual_northing || 0).toFixed(2)}</td>
-                            <td class="px-4 py-3">${Number(p.actual_elevation || 0).toFixed(3)}</td>
+                            <td class="px-4 py-3">${hole.actual.easting ? hole.actual.easting.toFixed(2) : 'N/A'}</td>
+                            <td class="px-4 py-3">${hole.actual.northing ? hole.actual.northing.toFixed(2) : 'N/A'}</td>
+                            <td class="px-4 py-3">${hole.actual.elevation ? hole.actual.elevation.toFixed(3) : 'N/A'}</td>
                             <td class="px-4 py-3">${(p.dx || 0).toFixed(3)}</td>
                             <td class="px-4 py-3">${(p.dy || 0).toFixed(3)}</td>
                             <td class="px-4 py-3">${(p.dz || 0).toFixed(3)}</td>
@@ -2058,8 +2060,9 @@
                 const ctx = canvas.getContext('2d');
                 
                 const data = holeData.map((hole, index) => ({
-                    x: hole.properties.hole_id,
-                    y: parseFloat(hole.properties.hole_deviation) || 0
+                    x: index + 1,
+                    y: parseFloat(hole.properties.hole_deviation) || 0,
+                    holeId: hole.properties.hole_id
                 }));
                 
                 if (data.length === 0) {
@@ -2089,7 +2092,17 @@
                         maintainAspectRatio: false,
                         scales: {
                             y: { title: { display: true, text: 'Deviation (m)' } },
-                            x: { title: { display: true, text: 'Hole ID' } }
+                            x: { title: { display: true, text: 'Hole Number' } }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => {
+                                        const point = context.raw;
+                                        return `Hole ${point.holeId}: ${point.y.toFixed(2)}m`;
+                                    }
+                                }
+                            }
                         }
                     }
                 });
@@ -2183,9 +2196,9 @@
                 const ctx = canvas.getContext('2d');
                 
                 const labels = holeData.map(h => h.properties.hole_id);
-                const actualData = holeData.map(h => parseFloat(h.properties.actual_elevation) || 0);
-                const designData = holeData.map(h => parseFloat(h.properties.design_elevation) || 0);
-                const plannedData = holeData.map(h => parseFloat(h.properties.planned_elevation) || 0);
+                const actualData = holeData.map(h => h.actual.elevation);
+                const designData = holeData.map(h => h.design.elevation);
+                const plannedData = holeData.map(h => h.planned.elevation);
                 
                 if (holeData.length === 0) {
                     charts.elevationComparisonChart = new Chart(ctx, { 
@@ -2360,9 +2373,9 @@
                 const data = holeData
                     .map(h => ({
                         holeId: h.properties.hole_id || 'Unknown',
-                        actual: parseFloat(h.properties.actual_elevation) || 0,
-                        design: parseFloat(h.properties.design_elevation) || 0,
-                        planned: parseFloat(h.properties.planned_elevation) || 0
+                        actual: h.actual.elevation,
+                        design: h.design.elevation,
+                        planned: h.planned.elevation
                     }))
                     .sort((a, b) => String(a.holeId).localeCompare(String(b.holeId)));
 
@@ -2399,8 +2412,8 @@
                     holeId: h.properties.hole_id
                 }));
 
-                const totalHolesPlanned = holeData.filter(h => h.properties.planned_elevation).length;
-                const totalHolesActual = holeData.filter(h => h.properties.actual_elevation).length;
+                const totalHolesPlanned = holeData.length;
+                const totalHolesActual = holeData.filter(h => h.actual.elevation).length;
                 const holesWithin02 = holeData.filter(h => h.properties.in_spec_02).length;
                 const holesWithin04 = holeData.filter(h => h.properties.in_spec_04).length;
                 const maxHorizontalDev = Math.max(...horizontalDeviations.map(d => Math.sqrt(d.dx*d.dx + d.dy*d.dy)));
@@ -2493,9 +2506,9 @@
                 const totalHoles = holeData.length;
                 
                 const actualHolesCount = holeData.filter(hole => 
-                    hole.properties.actual_elevation && 
-                    hole.properties.actual_elevation !== 0 && 
-                    !isNaN(parseFloat(hole.properties.actual_elevation))
+                    hole.actual.elevation && 
+                    hole.actual.elevation !== 0 && 
+                    !isNaN(hole.actual.elevation)
                 ).length;
                 
                 const holesWithin02 = holeData.filter(hole => hole.properties.in_spec_02).length;
@@ -2511,7 +2524,7 @@
                 const percentOutside04 = totalHoles > 0 ? (100 - percentWithin04).toFixed(1) : 0;
 
                 document.getElementById('blast-number').textContent = currentTable.replace('hole_data', '').replace(/_/g, ' ').toUpperCase() || 'BN# 8';
-                document.getElementById('bench-level').textContent = holeData[0]?.properties.design_elevation + "mRL";
+                document.getElementById('bench-level').textContent = (holeData[0]?.design.elevation || 0) + "mRL";
                 document.getElementById('planned-holes').textContent = totalHoles;
                 document.getElementById('actual-holes').textContent = actualHolesCount;
                 document.getElementById('avg-deviation').textContent = avgDeviation.toFixed(2);
@@ -2529,8 +2542,8 @@
                 document.getElementById('avg-deviation-summary').textContent = avgDeviation.toFixed(2);
                 document.getElementById('max-deviation').textContent = Math.max(...deviations).toFixed(2);
 
-                const sampleHole = holeData[0]?.properties;
-                document.getElementById('bench').textContent = sampleHole?.design_elevation != null ? `${sampleHole.design_elevation}mRL` : 'N/A';
+                const sampleHole = holeData[0];
+                document.getElementById('bench').textContent = sampleHole?.design.elevation ? `${sampleHole.design.elevation}mRL` : 'N/A';
 
                 if (monitoringData.length > 0) {
                     const sampleMonitor = monitoringData[0].properties;
@@ -2727,6 +2740,7 @@
                             if (coordDisplay) {
                                 coordDisplay.textContent = `Showing: ${transformEnabled ? 'WGS84 (transformed)' : 'UTM (raw)'}`;
                             }
+                            // Redraw markers with new popup format
                             plotHoleData();
                             plotMonitoringData();
                         });
